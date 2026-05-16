@@ -1,4 +1,4 @@
-import { CalendarDays, RotateCcw, SlidersHorizontal, Users, X } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, RotateCcw, SlidersHorizontal, Users, X } from "lucide-react";
 import { useMemo } from "react";
 import { booleanFilterLabel, filterLabel, labelFor } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type FilterBarProps = {
   filters: FilterState;
@@ -23,7 +22,6 @@ type FilterBarProps = {
 };
 
 const SHOT_CLOCK_BUCKETS: Array<{ value: string; label: string }> = [
-  { value: "all", label: "Any shot clock" },
   { value: "early", label: "Early (18-24s)" },
   { value: "middle", label: "Middle (8-17s)" },
   { value: "late", label: "Late (4-7s)" },
@@ -53,15 +51,15 @@ export function FilterBar({
   onChange,
   hidePlayerFilter = false,
 }: FilterBarProps) {
-  const update = (key: keyof FilterState, value: string) => onChange({ ...filters, [key]: value });
+  const update = <K extends keyof FilterState>(key: K, value: FilterState[K]) => onChange({ ...filters, [key]: value });
 
   const activeChips = useMemo(() => {
-    const chips: Array<{ key: keyof FilterState; label: string; value: string; resetTo: string }> = [];
-    if (!hidePlayerFilter && filters.player !== "all") chips.push({ key: "player", label: filterLabel("player"), value: filters.player, resetTo: "all" });
-    if (filters.shotType !== "all") chips.push({ key: "shotType", label: filterLabel("shotType"), value: labelFor(filters.shotType), resetTo: "all" });
-    if (filters.complexShotType !== "all") chips.push({ key: "complexShotType", label: filterLabel("complexShotType"), value: labelFor(filters.complexShotType), resetTo: "all" });
-    if (filters.contestLevel !== "all") chips.push({ key: "contestLevel", label: filterLabel("contestLevel"), value: labelFor(filters.contestLevel), resetTo: "all" });
-    if (filters.shotClockBucket !== "all") chips.push({ key: "shotClockBucket", label: filterLabel("shotClockBucket"), value: labelFor(filters.shotClockBucket), resetTo: "all" });
+    const chips: Array<{ key: keyof FilterState; label: string; value: string; resetTo: FilterState[keyof FilterState] }> = [];
+    if (!hidePlayerFilter && filters.player.length > 0) chips.push({ key: "player", label: filterLabel("player"), value: formatSelection(filters.player, (value) => value), resetTo: [] });
+    if (filters.shotType.length > 0) chips.push({ key: "shotType", label: filterLabel("shotType"), value: formatSelection(filters.shotType, labelFor), resetTo: [] });
+    if (filters.complexShotType.length > 0) chips.push({ key: "complexShotType", label: filterLabel("complexShotType"), value: formatSelection(filters.complexShotType, labelFor), resetTo: [] });
+    if (filters.contestLevel.length > 0) chips.push({ key: "contestLevel", label: filterLabel("contestLevel"), value: formatSelection(filters.contestLevel, labelFor), resetTo: [] });
+    if (filters.shotClockBucket.length > 0) chips.push({ key: "shotClockBucket", label: filterLabel("shotClockBucket"), value: formatSelection(filters.shotClockBucket, labelFor), resetTo: [] });
     if (filters.assisted !== "all") chips.push({ key: "assisted", label: filterLabel("assisted"), value: booleanFilterLabel("assisted", filters.assisted), resetTo: "all" });
     if (filters.catchAndShoot !== "all") chips.push({ key: "catchAndShoot", label: filterLabel("catchAndShoot"), value: booleanFilterLabel("catchAndShoot", filters.catchAndShoot), resetTo: "all" });
     if (filters.dateFrom && filters.dateFrom !== minDate) chips.push({ key: "dateFrom", label: "From", value: filters.dateFrom, resetTo: minDate });
@@ -71,13 +69,13 @@ export function FilterBar({
 
   const reset = () =>
     onChange({
-      player: "all",
-      shotType: "all",
-      complexShotType: "all",
-      contestLevel: "all",
+      player: [],
+      shotType: [],
+      complexShotType: [],
+      contestLevel: [],
       assisted: "all",
       catchAndShoot: "all",
-      shotClockBucket: "all",
+      shotClockBucket: [],
       dateFrom: minDate,
       dateTo: maxDate,
     });
@@ -111,44 +109,40 @@ export function FilterBar({
       <div className={cn("grid grid-cols-1 gap-3 md:grid-cols-2", hidePlayerFilter ? "lg:grid-cols-4" : "lg:grid-cols-5")}>
         {!hidePlayerFilter ? (
           <FilterField icon={<Users className="size-3.5" />} label="Player">
-            <Select value={filters.player} onValueChange={(v) => update("player", v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All players</SelectItem>
-                {players.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <MultiSelect
+              value={filters.player}
+              options={players.map((player) => ({ value: player, label: player }))}
+              allLabel="All players"
+              onChange={(value) => update("player", value)}
+            />
           </FilterField>
         ) : null}
 
         <FilterField label="Shot type">
-          <Select value={filters.shotType} onValueChange={(v) => update("shotType", v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All shot types</SelectItem>
-              {shotTypes.map((t) => <SelectItem key={t} value={t}>{labelFor(t)}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <MultiSelect
+            value={filters.shotType}
+            options={shotTypes.map((type) => ({ value: type, label: labelFor(type) }))}
+            allLabel="All shot types"
+            onChange={(value) => update("shotType", value)}
+          />
         </FilterField>
 
         <FilterField label="Shot detail">
-          <Select value={filters.complexShotType} onValueChange={(v) => update("complexShotType", v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All shot details</SelectItem>
-              {complexShotTypes.map((t) => <SelectItem key={t} value={t}>{labelFor(t)}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <MultiSelect
+            value={filters.complexShotType}
+            options={complexShotTypes.map((type) => ({ value: type, label: labelFor(type) }))}
+            allLabel="All shot details"
+            onChange={(value) => update("complexShotType", value)}
+          />
         </FilterField>
 
         <FilterField label="Contest">
-          <Select value={filters.contestLevel} onValueChange={(v) => update("contestLevel", v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Any contest level</SelectItem>
-              {contestLevels.map((l) => <SelectItem key={l} value={l}>{labelFor(l)}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <MultiSelect
+            value={filters.contestLevel}
+            options={contestLevels.map((level) => ({ value: level, label: labelFor(level) }))}
+            allLabel="Any contest level"
+            onChange={(value) => update("contestLevel", value)}
+          />
         </FilterField>
 
         <FilterField icon={<CalendarDays className="size-3.5" />} label="Date range">
@@ -206,12 +200,12 @@ export function FilterBar({
         <SegmentedField label="Creation" value={filters.assisted} options={CREATION_OPTIONS} onChange={(v) => update("assisted", v)} />
         <SegmentedField label="Touch type" value={filters.catchAndShoot} options={TOUCH_OPTIONS} onChange={(v) => update("catchAndShoot", v)} />
         <FilterField label="Shot clock">
-          <Select value={filters.shotClockBucket} onValueChange={(v) => update("shotClockBucket", v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {SHOT_CLOCK_BUCKETS.map((b) => <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <MultiSelect
+            value={filters.shotClockBucket}
+            options={SHOT_CLOCK_BUCKETS}
+            allLabel="Any shot clock"
+            onChange={(value) => update("shotClockBucket", value)}
+          />
         </FilterField>
       </div>
 
@@ -229,7 +223,7 @@ export function FilterBar({
                   key={chip.key}
                   variant="secondary"
                   className="cursor-pointer pl-2 pr-1 py-1 gap-1 hover:bg-secondary/70"
-                  onClick={() => update(chip.key, chip.resetTo)}
+                  onClick={() => onChange({ ...filters, [chip.key]: chip.resetTo })}
                 >
                   <span className="font-normal text-secondary-foreground/70">{chip.label}:</span>
                   <span className="font-medium">{chip.value}</span>
@@ -248,6 +242,75 @@ export function FilterBar({
       )}
     </div>
   );
+}
+
+function MultiSelect({
+  value,
+  options,
+  allLabel,
+  onChange,
+}: {
+  value: string[];
+  options: Array<{ value: string; label: string }>;
+  allLabel: string;
+  onChange: (value: string[]) => void;
+}) {
+  const selected = new Set(value);
+  const label =
+    value.length === 0
+      ? allLabel
+      : value.length === 1
+        ? options.find((option) => option.value === value[0])?.label ?? value[0]
+        : `${value.length} selected`;
+
+  const toggle = (optionValue: string) => {
+    if (selected.has(optionValue)) {
+      onChange(value.filter((item) => item !== optionValue));
+      return;
+    }
+    onChange([...value, optionValue]);
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="w-full justify-between font-normal text-foreground">
+          <span className="truncate">{label}</span>
+          <ChevronDown className="size-4 opacity-60 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-1">
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+        >
+          <span>{allLabel}</span>
+          {value.length === 0 ? <Check className="size-4 text-primary" /> : null}
+        </button>
+        <div className="my-1 h-px bg-border" />
+        <div className="max-h-72 overflow-y-auto">
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => toggle(option.value)}
+              className="flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+            >
+              <span className="truncate">{option.label}</span>
+              {selected.has(option.value) ? <Check className="size-4 shrink-0 text-primary" /> : null}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function formatSelection(values: string[], formatValue: (value: string) => string): string {
+  const formatted = values.map(formatValue);
+  if (formatted.length <= 2) return formatted.join(", ");
+  return `${formatted.slice(0, 2).join(", ")} +${formatted.length - 2}`;
 }
 
 function FilterField({

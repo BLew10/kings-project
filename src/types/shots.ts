@@ -47,13 +47,13 @@ export type ShotClockBucket = "early" | "middle" | "late" | "end";
 export type DribbleBucket = "0" | "1" | "2-3" | "4+";
 
 export type Filters = {
-  player: string;
-  shotType: string;
-  complexShotType: string;
-  contestLevel: string;
+  player: string[];
+  shotType: string[];
+  complexShotType: string[];
+  contestLevel: string[];
   assisted: string;
   catchAndShoot: string;
-  shotClockBucket: string;
+  shotClockBucket: string[];
   dateFrom: string;
   dateTo: string;
 };

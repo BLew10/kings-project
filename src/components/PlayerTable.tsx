@@ -1,8 +1,9 @@
+import { Fragment, type ReactNode, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ShotCourt } from "@/components/ShotCourt";
 import { formatPercent } from "@/lib/shotModel";
 import { cn } from "@/lib/utils";
-import type { BreakdownRow, MetricSummary } from "@/types/shots";
+import type { BreakdownRow, MetricSummary, Shot } from "@/types/shots";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ZoneLegend, ZoneSparkline } from "@/components/ZoneSparkline";
@@ -12,9 +13,12 @@ type PlayerRow = MetricSummary & { player: string };
 type PlayerTableProps = {
   rows: PlayerRow[];
   selectedPlayer?: string;
-  onSelectPlayer?: (player: string) => void;
+  onSelectPlayer?: (player: string | undefined) => void;
   /** Optional per-player zone breakdown. When provided, renders a Shot Mix sparkline column. */
   playerZones?: Record<string, BreakdownRow[]>;
+  /** Optional per-player shot attempts. When provided, selected rows expand to a location heatmap. */
+  playerShots?: Record<string, Shot[]>;
+  expandedContent?: ReactNode;
   title?: string;
   description?: string;
 };
@@ -36,6 +40,8 @@ export function PlayerTable({
   selectedPlayer,
   onSelectPlayer,
   playerZones,
+  playerShots,
+  expandedContent,
   title = "Player Comparison",
   description,
 }: PlayerTableProps) {
@@ -43,6 +49,12 @@ export function PlayerTable({
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const interactive = typeof onSelectPlayer === "function";
   const showSparkline = !!playerZones;
+  const totalColumns = COLUMNS.length + (showSparkline ? 1 : 0) + (interactive ? 1 : 0);
+
+  const handleSelectPlayer = (player: string) => {
+    if (!interactive) return;
+    onSelectPlayer(selectedPlayer === player ? undefined : player);
+  };
 
   const sorted = useMemo(() => {
     const copy = [...rows];
@@ -109,40 +121,71 @@ export function PlayerTable({
               <tbody className="divide-y divide-border">
                 {sorted.map((row) => {
                   const selected = selectedPlayer === row.player;
+                  const shots = playerShots?.[row.player] ?? [];
                   return (
-                    <tr
-                      key={row.player}
-                      onClick={interactive ? () => onSelectPlayer!(row.player) : undefined}
-                      className={cn(
-                        "transition-colors",
-                        interactive && "cursor-pointer hover:bg-accent/40",
-                        selected && "bg-accent/60 hover:bg-accent/60",
-                      )}
-                    >
-                      <td className="px-4 py-1.5">
-                        <div className="flex items-center gap-2.5">
-                          <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
-                            {initials(row.player)}
-                          </span>
-                          <span className={cn("font-medium", selected && "text-primary")}>{row.player}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-1.5 text-right tabular-nums">{row.attempts.toLocaleString()}</td>
-                      <td className="px-4 py-1.5 text-right tabular-nums">{formatPercent(row.fgPct)}</td>
-                      <td className="px-4 py-1.5 text-right tabular-nums">{formatPercent(row.assistedPct)}</td>
-                      <td className="px-4 py-1.5 text-right tabular-nums">{formatPercent(row.catchShootPct)}</td>
-                      <td className="px-4 py-1.5 text-right tabular-nums">{row.avgDribbles.toFixed(1)}</td>
-                      {showSparkline ? (
+                    <Fragment key={row.player}>
+                      <tr
+                        onClick={interactive ? () => handleSelectPlayer(row.player) : undefined}
+                        aria-expanded={interactive ? selected : undefined}
+                        className={cn(
+                          "transition-colors",
+                          interactive && "cursor-pointer hover:bg-accent/40",
+                          selected && "bg-accent/60 hover:bg-accent/60",
+                        )}
+                      >
                         <td className="px-4 py-1.5">
-                          <ZoneSparkline rows={playerZones![row.player] ?? []} />
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+                              {initials(row.player)}
+                            </span>
+                            <span className={cn("font-medium", selected && "text-primary")}>{row.player}</span>
+                          </div>
                         </td>
+                        <td className="px-4 py-1.5 text-right tabular-nums">{row.attempts.toLocaleString()}</td>
+                        <td className="px-4 py-1.5 text-right tabular-nums">{formatPercent(row.fgPct)}</td>
+                        <td className="px-4 py-1.5 text-right tabular-nums">{formatPercent(row.assistedPct)}</td>
+                        <td className="px-4 py-1.5 text-right tabular-nums">{formatPercent(row.catchShootPct)}</td>
+                        <td className="px-4 py-1.5 text-right tabular-nums">{row.avgDribbles.toFixed(1)}</td>
+                        {showSparkline ? (
+                          <td className="px-4 py-1.5">
+                            <ZoneSparkline rows={playerZones![row.player] ?? []} />
+                          </td>
+                        ) : null}
+                        {interactive ? (
+                          <td className="px-2 py-1.5 text-right">
+                            <ChevronRight
+                              className={cn(
+                                "size-4 text-muted-foreground/60 transition-transform",
+                                selected && "rotate-90 text-primary",
+                              )}
+                            />
+                          </td>
+                        ) : null}
+                      </tr>
+                      {selected ? (
+                        <tr className="bg-accent/20">
+                          <td colSpan={totalColumns} className="px-4 py-4">
+                            {shots.length > 0 ? (
+                              <div className="animate-slide-down grid gap-4 rounded-lg border border-border bg-card p-4 lg:grid-cols-[minmax(280px,0.85fr)_minmax(360px,1.15fr)]">
+                                <div className="min-w-0">
+                                  <ShotCourt
+                                    shots={shots}
+                                    title={`${row.player} Location Efficiency`}
+                                    description={`${shots.length.toLocaleString()} attempts · color = FG%, opacity = volume`}
+                                    embedded
+                                  />
+                                </div>
+                                {expandedContent ? <div className="min-w-0">{expandedContent}</div> : null}
+                              </div>
+                            ) : (
+                              <div className="rounded-lg border border-dashed border-border bg-card px-4 py-6 text-sm text-muted-foreground">
+                                No shot locations match the current filters for {row.player}.
+                              </div>
+                            )}
+                          </td>
+                        </tr>
                       ) : null}
-                      {interactive ? (
-                        <td className="px-2 py-1.5 text-right">
-                          <ChevronRight className="size-4 text-muted-foreground/60" />
-                        </td>
-                      ) : null}
-                    </tr>
+                    </Fragment>
                   );
                 })}
               </tbody>

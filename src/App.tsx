@@ -1,6 +1,5 @@
 import {
   Activity,
-  AlertTriangle,
   BarChart3,
   Crown,
   Lightbulb,
@@ -9,8 +8,11 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ActionPlanPrompt } from "@/components/ActionPlanPrompt";
+import type { FilterOptions } from "@/components/ActionPlanPrompt";
 import { BarList } from "@/components/BarList";
+import { ErrorState } from "@/components/ErrorState";
 import { FilterBar } from "@/components/filter-bar";
 import { LineupBuilder } from "@/components/LineupBuilder";
 import { MetricCard } from "@/components/MetricCard";
@@ -18,7 +20,7 @@ import { PlayerTable } from "@/components/PlayerTable";
 import { ShotCourt } from "@/components/ShotCourt";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { loadShots } from "@/lib/csv";
 import { labelFor } from "@/lib/labels";
@@ -38,25 +40,28 @@ import type { Filters as FilterState, Shot } from "@/types/shots";
 
 type View = "team" | "players" | "lineup";
 
+const SHOT_CLOCK_BUCKETS = ["early", "middle", "late", "end"];
+
 function App() {
   const [shots, setShots] = useState<Shot[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>("team");
   const [lineup, setLineup] = useState<string[]>([]);
+  const [selectedPromptPlayer, setSelectedPromptPlayer] = useState<string | undefined>();
   const [filters, setFilters] = useState<FilterState>({
-    player: "all",
-    shotType: "all",
-    complexShotType: "all",
-    contestLevel: "all",
+    player: [],
+    shotType: [],
+    complexShotType: [],
+    contestLevel: [],
     assisted: "all",
     catchAndShoot: "all",
-    shotClockBucket: "all",
+    shotClockBucket: [],
     dateFrom: "",
     dateTo: "",
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadDashboard = useCallback(() => {
     loadShots()
       .then((data) => {
         const dates = data.map((s) => s.date).sort();
@@ -77,8 +82,24 @@ function App() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  // TODO (you): implement retry. Decide:
+  //   - What state should you reset before re-fetching? (error, loading, shots, lineup?)
+  //   - Should you re-seed defaults (dateFrom/dateTo, top-5 lineup) on retry,
+  //     or has loadDashboard already done that for you?
+  //   - Do you need to guard against double-clicks while a retry is in flight?
+  // Starter version below — refine it if you want.
+  const handleRetry = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    loadDashboard();
+  }, [loadDashboard]);
+
   const players = useMemo(() => getPlayers(shots), [shots]);
-  const teamFilters = useMemo(() => ({ ...filters, player: "all" }), [filters]);
+  const teamFilters = useMemo(() => ({ ...filters, player: [] }), [filters]);
   const teamShots = useMemo(() => applyFilters(shots, teamFilters), [shots, teamFilters]);
   const filteredShots = useMemo(() => applyFilters(shots, filters), [shots, filters]);
   const lineupShots = useMemo(() => getLineupShots(teamShots, lineup), [teamShots, lineup]);
@@ -88,10 +109,18 @@ function App() {
   const teamSummary = useMemo(() => summarize(teamShots), [teamShots]);
   const playerRows = useMemo(() => getPlayerRows(teamShots), [teamShots]);
   const playerZones = useMemo(() => getPlayerZoneShares(teamShots), [teamShots]);
+  const playerShots = useMemo(() => {
+    const grouped: Record<string, Shot[]> = {};
+    for (const shot of teamShots) {
+      (grouped[shot.shooterName] ??= []).push(shot);
+    }
+    return grouped;
+  }, [teamShots]);
   const zoneRows = useMemo(() => breakdownBy(activeShots, (s) => s.zone), [activeShots]);
   const typeRows = useMemo(() => breakdownBy(activeShots, (s) => s.complexShotType), [activeShots]);
   const contextRows = useMemo(() => breakdownBy(activeShots, (s) => s.contestLevel), [activeShots]);
   const insights = useMemo(() => getInsightFlags(activeShots, teamShots), [activeShots, teamShots]);
+  const formattedInsights = useMemo(() => insights.map(formatInsight), [insights]);
 
   const dates = useMemo(() => shots.map((s) => s.date).sort(), [shots]);
   const minDate = dates[0] ?? "";
@@ -100,8 +129,44 @@ function App() {
   const shotTypes = useMemo(() => getOptions(shots, (s) => s.shotType), [shots]);
   const complexShotTypes = useMemo(() => getOptions(shots, (s) => s.complexShotType), [shots]);
   const contestLevels = useMemo(() => getOptions(shots, (s) => s.contestLevel), [shots]);
+  const promptFilterOptions = useMemo<FilterOptions>(
+    () => ({
+      players,
+      shotTypes,
+      shotDetails: complexShotTypes,
+      contestLevels,
+      shotClockBuckets: SHOT_CLOCK_BUCKETS,
+    }),
+    [complexShotTypes, contestLevels, players, shotTypes],
+  );
 
-  const playerFocused = view === "team" && filters.player !== "all";
+  const playerFocused = view === "team" && filters.player.length > 0;
+  const promptPlayer =
+    selectedPromptPlayer && playerRows.some((row) => row.player === selectedPromptPlayer)
+      ? selectedPromptPlayer
+      : undefined;
+  const promptPlayerFilters = useMemo(
+    () => ({ ...teamFilters, player: promptPlayer ? [promptPlayer] : [] }),
+    [promptPlayer, teamFilters],
+  );
+  const promptPlayerShots = useMemo(
+    () => (promptPlayer ? applyFilters(shots, promptPlayerFilters) : []),
+    [promptPlayer, promptPlayerFilters, shots],
+  );
+  const promptPlayerSummary = useMemo(() => summarize(promptPlayerShots), [promptPlayerShots]);
+  const promptPlayerZones = useMemo(() => breakdownBy(promptPlayerShots, (s) => s.zone), [promptPlayerShots]);
+  const promptPlayerTypes = useMemo(
+    () => breakdownBy(promptPlayerShots, (s) => s.complexShotType),
+    [promptPlayerShots],
+  );
+  const promptPlayerContexts = useMemo(
+    () => breakdownBy(promptPlayerShots, (s) => s.contestLevel),
+    [promptPlayerShots],
+  );
+  const promptPlayerInsights = useMemo(
+    () => getInsightFlags(promptPlayerShots, teamShots).map(formatInsight),
+    [promptPlayerShots, teamShots],
+  );
 
   const subject =
     view === "players"
@@ -111,7 +176,9 @@ function App() {
           ? `Lineup: ${lineup.join(", ")}`
           : "Empty lineup"
         : playerFocused
-          ? filters.player
+          ? filters.player.length === 1
+            ? filters.player[0]
+            : `Selected Players: ${filters.player.join(", ")}`
           : "Assumed Team Profile";
 
   const subjectDescription =
@@ -122,27 +189,13 @@ function App() {
           ? `Combined shot diet across ${lineup.length} selected ${lineup.length === 1 ? "player" : "players"}. All Team filters still apply.`
           : "Pick up to five players below to view their combined shot profile."
         : playerFocused
-          ? "Individual shot profile, compared against the assumed team baseline."
+          ? filters.player.length === 1
+            ? "Individual shot profile, compared against the assumed team baseline."
+            : "Combined selected-player shot profile, compared against the assumed team baseline."
           : "12-player anonymized sample treated as one team for the 2024-25 season.";
 
   const fgDelta = summary.fgPct - teamSummary.fgPct;
   const showDelta = summary.attempts > 0 && (playerFocused || view === "lineup");
-
-  if (error) {
-    return (
-      <main className="min-h-screen flex items-center justify-center p-6 bg-background">
-        <Card className="max-w-md">
-          <CardHeader className="items-center text-center">
-            <span className="flex size-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
-              <AlertTriangle className="size-6" />
-            </span>
-            <CardTitle>Unable to load dashboard</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-        </Card>
-      </main>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -157,17 +210,23 @@ function App() {
               <p className="text-xs text-muted-foreground leading-tight">2024-25 season · 12-player sample</p>
             </div>
           </div>
-          <Tabs value={view} onValueChange={(v) => setView(v as View)}>
-            <TabsList>
-              <TabsTrigger value="team"><Users className="size-3.5" /> Team</TabsTrigger>
-              <TabsTrigger value="players"><BarChart3 className="size-3.5" /> Players</TabsTrigger>
-              <TabsTrigger value="lineup"><Zap className="size-3.5" /> Lineup</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {error ? null : (
+            <Tabs value={view} onValueChange={(v) => setView(v as View)}>
+              <TabsList>
+                <TabsTrigger value="team"><Users className="size-3.5" /> Team</TabsTrigger>
+                <TabsTrigger value="players"><BarChart3 className="size-3.5" /> Players</TabsTrigger>
+                <TabsTrigger value="lineup"><Zap className="size-3.5" /> Lineup</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 space-y-6">
+        {error ? (
+          <ErrorState onRetry={handleRetry} retrying={loading} />
+        ) : (
+        <>
         <Card>
           <CardContent className="py-5">
             <FilterBar
@@ -198,11 +257,32 @@ function App() {
         </section>
 
         {view === "players" ? (
-          <PlayerTable
-            rows={playerRows}
-            playerZones={playerZones}
-            description="Click a column header to sort. Hover the Shot Mix bar for per-zone share and FG%."
-          />
+          <>
+            <PlayerTable
+              rows={playerRows}
+              playerZones={playerZones}
+              playerShots={playerShots}
+              selectedPlayer={selectedPromptPlayer}
+              onSelectPlayer={setSelectedPromptPlayer}
+              description="Click a column header to sort. Click a row to open that player's location efficiency heatmap and action-plan prompt."
+              expandedContent={
+                promptPlayer ? (
+                  <ActionPlanPrompt
+                    subject={promptPlayer}
+                    mode="player"
+                    filters={promptPlayerFilters}
+                    filterOptions={promptFilterOptions}
+                    summary={promptPlayerSummary}
+                    baselineSummary={teamSummary}
+                    zoneRows={promptPlayerZones}
+                    shotDetailRows={promptPlayerTypes}
+                    contextRows={promptPlayerContexts}
+                    insights={promptPlayerInsights}
+                  />
+                ) : null
+              }
+            />
+          </>
         ) : (
           <>
             {view === "lineup" ? (
@@ -282,12 +362,28 @@ function App() {
                 description="Defensive pressure distribution across the selected lineup's shots."
               />
             ) : null}
+
+            <ActionPlanPrompt
+              subject={subject}
+              mode={view === "lineup" ? "lineup" : playerFocused ? "player" : "team"}
+              filters={view === "lineup" ? teamFilters : filters}
+              filterOptions={promptFilterOptions}
+              summary={summary}
+              baselineSummary={teamSummary}
+              zoneRows={zoneRows}
+              shotDetailRows={typeRows}
+              contextRows={contextRows}
+              insights={formattedInsights}
+              lineup={view === "lineup" ? lineup : undefined}
+            />
           </>
         )}
 
         {loading ? (
           <p className="text-center text-xs text-muted-foreground">Loading shot data…</p>
         ) : null}
+        </>
+        )}
       </main>
 
       <footer className="border-t border-border bg-card/40 py-5">

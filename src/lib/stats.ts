@@ -2,13 +2,13 @@ import type { BreakdownRow, Filters, MetricSummary, Shot } from "../types/shots"
 
 export function applyFilters(shots: Shot[], filters: Filters): Shot[] {
   return shots.filter((shot) => {
-    if (filters.player !== "all" && shot.shooterName !== filters.player) return false;
-    if (filters.shotType !== "all" && shot.shotType !== filters.shotType) return false;
-    if (filters.complexShotType !== "all" && shot.complexShotType !== filters.complexShotType) return false;
-    if (filters.contestLevel !== "all" && shot.contestLevel !== filters.contestLevel) return false;
+    if (filters.player.length > 0 && !filters.player.includes(shot.shooterName)) return false;
+    if (filters.shotType.length > 0 && !filters.shotType.includes(shot.shotType)) return false;
+    if (filters.complexShotType.length > 0 && !filters.complexShotType.includes(shot.complexShotType)) return false;
+    if (filters.contestLevel.length > 0 && !filters.contestLevel.includes(shot.contestLevel)) return false;
     if (filters.assisted !== "all" && String(shot.assisted) !== filters.assisted) return false;
     if (filters.catchAndShoot !== "all" && String(shot.catchAndShoot) !== filters.catchAndShoot) return false;
-    if (filters.shotClockBucket !== "all" && shot.shotClockBucket !== filters.shotClockBucket) return false;
+    if (filters.shotClockBucket.length > 0 && !filters.shotClockBucket.includes(shot.shotClockBucket)) return false;
     if (filters.dateFrom && shot.date < filters.dateFrom) return false;
     if (filters.dateTo && shot.date > filters.dateTo) return false;
     return true;

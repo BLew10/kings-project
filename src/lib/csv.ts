@@ -1,5 +1,10 @@
 import type { Shot } from "../types/shots";
-import { getDribbleBucket, getShotClockBucket, getShotDistance, getShotZone } from "./shotModel";
+import {
+  getDribbleBucket,
+  getShotClockBucket,
+  getShotDistance,
+  getShotZone,
+} from "./shotModel";
 
 type RawRow = Record<string, string>;
 
@@ -21,7 +26,9 @@ export function parseShotCsv(text: string): Shot[] {
     .map((line) => parseCsvLine(line))
     .filter((cells) => cells.length === headers.length)
     .map((cells) => {
-      const raw = Object.fromEntries(headers.map((header, index) => [header, cells[index]])) as RawRow;
+      const raw = Object.fromEntries(
+        headers.map((header, index) => [header, cells[index]])
+      ) as RawRow;
       const x = toNumber(raw.x);
       const y = toNumber(raw.y);
       const dribblesBefore = toNumber(raw.dribbles_before);
