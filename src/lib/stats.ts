@@ -1,4 +1,6 @@
-import type { BreakdownRow, Filters, MetricSummary, PlayerOption, Shot } from "../types/shots";
+import type { Shot } from "../types/shots";
+import type { Filters } from "../types/filters";
+import type { BreakdownRow, MetricSummary, PlayerOption } from "../types/analytics";
 
 /** Applies all dashboard filters to a shot collection. */
 export function applyFilters(shots: Shot[], filters: Filters): Shot[] {

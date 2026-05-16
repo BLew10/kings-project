@@ -4,7 +4,7 @@ A frontend-only dashboard for exploring anonymized 2024-25 NBA shot attempt data
 
 This project is intentionally scoped as a frontend product and interaction exercise. Given the small static dataset and 8-10 hour guidance, the emphasis is on a polished analytical experience, clear component boundaries, responsive filtering, and useful basketball workflows rather than backend infrastructure or data-platform optimization.
 
-![Dashboard screenshot](docs/dashboard-screenshot.png)
+**Live demo:** [kings-project-three.vercel.app](https://kings-project-three.vercel.app/)
 
 ## How The Dashboard Answers The Project Questions
 
@@ -14,7 +14,7 @@ This submission is intentionally scoped to a polished, maintainable three-view d
   The **Players** tab compares all 12 players in one sortable table. It shows attempts, FG%, assisted rate, catch-and-shoot rate, average dribbles, and a per-player zone-mix sparkline. Clicking a player expands that row into a player-specific location efficiency heatmap, making it easy to move from table-level comparison to spatial shot profile without leaving the view.
 
 - **Which shots are efficient or inefficient?**
-  The **Team** and **Lineup** tabs show efficiency spatially and categorically. `ShotCourt` colors binned court cells by FG% and uses opacity for volume, while the zone and shot-detail breakdowns list attempts, share, FG%, and points per shot. The shortlist insight panel ranks preserve/trim candidates using derived shot value so high-value threes and rim attempts are evaluated more appropriately than raw FG% alone.
+  The **Team** and **Lineup** tabs show efficiency spatially and categorically. `ShotCourt` colors binned court cells by FG% and uses opacity for volume, while the zone and shot-detail breakdowns list attempts, share, FG%, and points per shot. Because points per shot is derived from a coordinate-based shot-value model, high-value threes and rim attempts are evaluated more appropriately than raw FG% alone.
 
 - **How shot-making changes by context?**
   The sticky filter bar lets the user isolate shot type, shot detail, contest level, date range, assisted vs self-created attempts, catch-and-shoot vs off-dribble attempts, and shot-clock bucket. Every KPI, court cell, bar list, player row, and lineup profile recomputes from those filters, so context changes are visible immediately.
@@ -23,7 +23,7 @@ This submission is intentionally scoped to a polished, maintainable three-view d
   The **Team** tab can focus on one player through the player filter and keeps the team baseline visible in the FG% card. The **Players** tab adds a side-by-side comparison view so individual shot diets can be compared against the full 12-player assumed team.
 
 - **What tactical or roster-level insights can be derived from the data?**
-  The app surfaces ranked coaching notes through a **Shortlist Insights** panel: best bets to preserve, inefficient areas to trim, role signals, and sample-size caveats. The lineup view combines any five selected players' shot profiles to show whether the group leans toward paint pressure, above-break threes, corner threes, midrange attempts, catch-and-shoot looks, or self-created shots. Each team, player, or lineup profile also includes a copy-ready AI action-plan prompt that packages the current filters, summary metrics, zone mix, shot-detail mix, contest context, and caveats so a coach or analyst can develop a plan of action outside the app. Because the source data does not include shared-court possessions or minutes, the UI explicitly describes this as combined shot diet rather than true lineup performance.
+  The app derives ranked coaching notes from zone-efficiency deltas (best bets to preserve, inefficient slices to trim, role signals, sample-size caveats) and embeds them in the copy-ready AI action-plan prompt for the current profile. The lineup view combines any five selected players' shot profiles to show whether the group leans toward paint pressure, above-break threes, corner threes, midrange attempts, catch-and-shoot looks, or self-created shots. Each team, player, or lineup profile also includes that AI action-plan prompt, which packages the current filters, summary metrics, zone mix, shot-detail mix, contest context, and caveats so a coach or analyst can develop a plan of action outside the app. Because the source data does not include shared-court possessions or minutes, the UI explicitly describes this as combined shot diet rather than true lineup performance.
 
 ## Tech Stack
 
@@ -54,15 +54,15 @@ From a UI/UX perspective, the stack supports a dense coaching/front-office tool 
 - Custom court heatmaps where color represents FG% and opacity represents shot volume.
 - Sortable player comparison table with zone-mix sparklines and click-to-expand player heatmaps.
 - Zone, shot-detail, and contest-context breakdowns with volume share, PPS, and FG%.
-- Ranked shortlist insights for best bets, trim candidates, role signals, and sample caveats.
+- Derived coaching notes (best bets, trim candidates, role signals, sample caveats) embedded in the AI action-plan prompt.
 - URL-shareable tab and filter state so a reviewer can preserve a specific analytical slice.
 - Copy-ready AI action-plan prompts for team, player, and lineup profiles.
 
 The dashboard has **three tabs**, each answering a distinct question from the brief:
 
-- **Team** — *"What does the team (or a single player) look like, spatially?"* The assumed team's full shot profile: KPIs, half-court heatmap, zone breakdown, shot-detail mix, and recommendation notes. Filter to a player to see their profile against the team baseline (the FG% card surfaces the delta).
-- **Players** — *"Which players are taking which types of shots?"* A side-by-side comparison table for all twelve players with a per-row zone-mix sparkline. Click a row to open that player's location efficiency heatmap and generate a copy-ready AI action-plan prompt for the filtered profile.
-- **Lineup** — *"What does this combination of five players look like?"* Compact lineup picker (defaults to top-5-by-attempts) plus the same shot profile components as Team. All Team filters carry over, including the AI action-plan prompt.
+- **Team**: *"What does the team (or a single player) look like, spatially?"* The assumed team's full shot profile: KPIs, half-court heatmap, zone breakdown, shot-detail mix, and an AI action-plan prompt that bakes in the derived insights. Filter to a player to see their profile against the team baseline (the FG% card surfaces the delta).
+- **Players**: *"Which players are taking which types of shots?"* A side-by-side comparison table for all twelve players with a per-row zone-mix sparkline. Click a row to open that player's location efficiency heatmap and generate a copy-ready AI action-plan prompt for the filtered profile.
+- **Lineup**: *"What does this combination of five players look like?"* Compact lineup picker (defaults to top-5-by-attempts) plus the same shot profile components as Team. All Team filters carry over, including the AI action-plan prompt.
 
 A single sticky filter bar drives the dashboard: player, shot type, shot detail, contest level, date range (with presets), creation (assisted / self-created), touch type (catch-and-shoot / off-dribble), and shot-clock bucket. The dropdown filters support multi-select, active filters render as removable chips, and "Reset all" restores the full dataset.
 
@@ -78,7 +78,7 @@ A single sticky filter bar drives the dashboard: player, shot type, shot detail,
 
 The app keeps a custom shot-value function because points per shot is materially more useful than raw FG% for shot-profile decisions. Without deriving 2PT vs 3PT value, a 35% three and a 45% long two would be compared only by FG%, even though the made-three attempt is worth more expected points.
 
-This is an example of value created from the fields the dataset did include. The CSV did not directly provide points, shot value, PPS, or a 2PT/3PT marker; it only provided location and outcome fields. By combining those available fields with NBA court geometry, the dashboard can add derived scoring context: made-shot points, points per shot, zone efficiency, PPS deltas against the team baseline, and more useful preserve/trim recommendations.
+This is an example of value created from the fields the dataset did include. The CSV did not directly provide points, shot value, PPS, or a 2PT/3PT marker; it only provided location and outcome fields. By combining those available fields with NBA court geometry, the dashboard can add derived scoring context: made-shot points, points per shot, zone efficiency, PPS deltas against the team baseline, and more useful preserve/trim signals.
 
 The derivation lives in `src/lib/shotModel.ts` and uses the NBA court geometry against this dataset's coordinate system:
 
@@ -93,8 +93,8 @@ This is deterministic and grounded in official NBA dimensions, but it is still d
 
 Resources used for the math:
 
-- [NBA Official Rulebook, Rule No. 1: Court Dimensions](https://official.nba.com/rulebook/) — the three-point area is defined by sideline-parallel lines 3 feet from the sidelines and a 23'9" arc from the middle of the basket.
-- [Official 2025-26 NBA Playing Rules PDF](https://cdn.nba.com/manage/2026/01/Official-2025-26-NBA-Playing-Rules.pdf) — the court diagram shows the 22-foot corner distance and 23 feet 9 inches above-break arc; Rule No. 5 defines successful field goals outside the three-point line as 3 points and on/inside the line as 2 points.
+- [NBA Official Rulebook, Rule No. 1: Court Dimensions](https://official.nba.com/rulebook/): the three-point area is defined by sideline-parallel lines 3 feet from the sidelines and a 23'9" arc from the middle of the basket.
+- [Official 2025-26 NBA Playing Rules PDF](https://cdn.nba.com/manage/2026/01/Official-2025-26-NBA-Playing-Rules.pdf): the court diagram shows the 22-foot corner distance and 23 feet 9 inches above-break arc; Rule No. 5 defines successful field goals outside the three-point line as 3 points and on/inside the line as 2 points.
 
 ## Tradeoffs
 
@@ -106,11 +106,13 @@ Resources used for the math:
 - **Manual CSV parsing vs Papa Parse.** The CSV is well-structured and known. A small parser is sufficient. For user-uploaded or messy CSVs, Papa Parse would be safer.
 - **Local state vs global store.** Plain React state with memoized selectors is enough; a store would be premature without URL state, collaboration, or many cross-cutting views.
 - **Derived shot value instead of official scoring metadata.** The data dictionary does not include a 2PT/3PT flag, so points per shot is derived from the coordinate-based zone model using official NBA three-point geometry. This is a better decision metric than FG% alone, but a production version would validate point value directly from play-by-play, official shot metadata, or replay-reviewed scoring.
-- **Lightweight recommendations vs complex modeling.** The recommendation notes use transparent zone deltas and sample thresholds instead of a black-box model. That makes the insight easy to explain and audit, but it is intentionally less sophisticated than an expected-shot model.
-- **URL state without account-level sharing.** Filters and the active tab are encoded in the query string for easy review links. If I had more time, I would add saved reports so coaches or front-office users could preserve a filtered view, shortlist insights, notes, and an action-plan prompt as a reusable analysis package.
-- **Compact app shell vs narrative report.** The product is designed as an exploratory work surface, not a slide deck. Coaches and analysts can change context quickly, but the app does not prescribe a single final story beyond the recommendation note.
+- **Lightweight insight engine vs complex modeling.** The derived coaching notes use transparent zone deltas and sample thresholds instead of a black-box model. That makes the insights easy to explain and audit, but it is intentionally less sophisticated than an expected-shot model.
+- **URL state without account-level sharing.** Filters and the active tab are encoded in the query string for easy review links. If I had more time, I would add saved reports so coaches or front-office users could preserve a filtered view, the derived insights, and the action-plan prompt as a reusable analysis package.
+- **Compact app shell vs narrative report.** The product is designed as an exploratory work surface, not a slide deck. Coaches and analysts can change context quickly, but the app does not prescribe a single final story beyond what the AI action-plan prompt synthesizes.
 
 ## Running Locally
+
+Prerequisites: Node 18+.
 
 ```bash
 npm install
@@ -125,9 +127,17 @@ Then open the local URL printed by Vite.
 npm run build
 ```
 
-## Dev Thought Process
+Produces a static bundle in `dist/`. There is no server component.
 
-See [DEV_THOUGHT_PROCESS.md](DEV_THOUGHT_PROCESS.md) for the product and engineering reasoning behind the dashboard: scope choices, metric decisions, architecture boundaries, tradeoffs, and future extensions.
+## Tests
+
+```bash
+npm test
+```
+
+Vitest covers the pure data layer: CSV parsing, zone classification and shot-value derivation, filter application, and summary aggregation. Run `npm run test:watch` while iterating.
+
+`npm run typecheck` runs `tsc -b` against the project's TypeScript references; this is the invocation to use before pushing or in CI, since the root `tsc --noEmit` shortcut checks nothing because the root tsconfig uses `files: []`.
 
 ## How I Would Extend This for Larger Data
 
@@ -141,4 +151,4 @@ With richer data, I would move this from descriptive shot profiling toward coach
 - Add multi-season, injury, availability, rest, and fatigue context to stabilize noisy samples and explain whether shot-profile changes are role-driven, health-driven, or opponent-driven.
 - Add league, team, and role benchmarks for eFG%, expected points, shot quality above expectation, and zone/shot-type efficiency.
 - Add video or possession links so filtered results can become coaching playlists, such as late-clock contested pull-ups or high-value catch-and-shoot examples.
-- From an engineering standpoint, move raw events into a database or columnar format, expose API-backed filtered aggregations, cache common rollups, and keep the current selector/component boundaries so larger data sources can be added without rewriting the dashboard.
+- From an engineering standpoint, move raw events into a database or columnar format, expose API-backed filtered aggregations, cache common rollups, and keep the current selector/component boundaries so larger data sources can be added without rewriting the dashboard. The current ingestion path (`src/lib/csv.ts` plus the derivation helpers in `shotModel.ts`) is already a single seam that can be replaced with an API client.

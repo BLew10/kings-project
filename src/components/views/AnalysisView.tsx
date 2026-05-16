@@ -1,6 +1,6 @@
 import { ActionPlanPrompt } from "@/components/ai/ActionPlanPrompt";
-import { BreakdownFocus } from "@/components/breakdown/BreakdownFocus";
-import { LineupBuilder } from "@/components/lineup/LineupBuilder";
+import { BreakdownFocus } from "@/components/panels/BreakdownFocus";
+import { LineupBuilder } from "@/components/panels/LineupBuilder";
 import { MetricGrid } from "@/components/metric/MetricGrid";
 import { ShotCourt } from "@/components/court/ShotCourt";
 import { formatInsight } from "@/hooks/usePromptPlayerProfile";
