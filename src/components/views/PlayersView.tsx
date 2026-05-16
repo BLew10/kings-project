@@ -2,8 +2,9 @@ import { ActionPlanPrompt } from "@/components/ai/ActionPlanPrompt";
 import { PlayerTable } from "@/components/player/PlayerTable";
 import type { PlayerRow } from "@/components/player/playerTableColumns";
 import type { FilterOptions } from "@/lib/promptBuilder";
-import type { BreakdownRow, MetricSummary, Shot } from "@/types/shots";
-import type { Filters } from "@/types/shots";
+import type { Shot } from "@/types/shots";
+import type { Filters } from "@/types/filters";
+import type { BreakdownRow, MetricSummary } from "@/types/analytics";
 import { usePromptPlayerProfile } from "@/hooks/usePromptPlayerProfile";
 
 type PlayersViewProps = {

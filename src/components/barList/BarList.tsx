@@ -1,5 +1,5 @@
 import { formatPercent, formatPointsPerShot, formatZone } from "@/lib/shotModel";
-import type { BreakdownRow } from "@/types/shots";
+import type { BreakdownRow } from "@/types/analytics";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 type BarListProps = {

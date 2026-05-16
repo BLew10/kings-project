@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import type { PlayerOption } from "@/types/shots";
+import type { PlayerOption } from "@/types/analytics";
 
 type LineupBuilderProps = {
   players: PlayerOption[];

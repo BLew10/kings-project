@@ -1,7 +1,7 @@
 import { Activity, LineChart, Target, TrendingUp, Users } from "lucide-react";
 import { MetricCard } from "@/components/metric/MetricCard";
 import { formatPercent, formatPointsPerShot } from "@/lib/shotModel";
-import type { MetricSummary } from "@/types/shots";
+import type { MetricSummary } from "@/types/analytics";
 
 type MetricGridProps = {
   summary: MetricSummary;

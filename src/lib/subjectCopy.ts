@@ -1,5 +1,6 @@
 import type { DashboardView } from "@/hooks/useDashboardComputations";
-import type { Filters, PlayerOption } from "@/types/shots";
+import type { Filters } from "@/types/filters";
+import type { PlayerOption } from "@/types/analytics";
 
 type Options = {
   view: DashboardView;

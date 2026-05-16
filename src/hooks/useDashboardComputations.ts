@@ -14,7 +14,8 @@ import {
   groupShotsByPlayer,
   summarize,
 } from "@/lib/stats";
-import type { Filters, Shot } from "@/types/shots";
+import type { Shot } from "@/types/shots";
+import type { Filters } from "@/types/filters";
 
 export type DashboardView = "team" | "players" | "lineup";
 

@@ -1,4 +1,4 @@
-import type { Filters } from "@/types/shots";
+import type { Filters } from "@/types/filters";
 import { ARRAY_FILTER_KEYS, SCALAR_FILTER_KEYS } from "@/lib/filterSchema";
 
 /** Parses dashboard filters from a URL query string. */

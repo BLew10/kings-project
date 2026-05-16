@@ -5,7 +5,8 @@ import { ZoneSparkline } from "@/components/zone/ZoneSparkline";
 import { initials, type PlayerRow } from "@/components/player/playerTableColumns";
 import { formatPercent, formatPointsPerShot } from "@/lib/shotModel";
 import { cn } from "@/lib/utils";
-import type { BreakdownRow, Shot } from "@/types/shots";
+import type { Shot } from "@/types/shots";
+import type { BreakdownRow } from "@/types/analytics";
 
 type PlayerTableRowProps = {
   row: PlayerRow;

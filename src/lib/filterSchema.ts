@@ -1,4 +1,5 @@
-import type { DribbleBucket, Filters, ShotClockBucket, ShotZone } from "@/types/shots";
+import type { DribbleBucket, ShotClockBucket, ShotZone } from "@/types/shots";
+import type { Filters } from "@/types/filters";
 
 export const SHOT_CLOCK_BUCKETS: ShotClockBucket[] = ["early", "middle", "late", "end", "unknown"];
 export const DRIBBLE_BUCKETS: DribbleBucket[] = ["0", "1", "2-3", "4+", "unknown"];

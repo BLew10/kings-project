@@ -5,7 +5,9 @@ import { MetricGrid } from "@/components/metric/MetricGrid";
 import { ShotCourt } from "@/components/court/ShotCourt";
 import { formatInsight } from "@/hooks/usePromptPlayerProfile";
 import type { FilterOptions } from "@/lib/promptBuilder";
-import type { BreakdownRow, Filters, MetricSummary, PlayerOption, Shot } from "@/types/shots";
+import type { Shot } from "@/types/shots";
+import type { Filters } from "@/types/filters";
+import type { BreakdownRow, MetricSummary, PlayerOption } from "@/types/analytics";
 import type { DashboardView } from "@/hooks/useDashboardComputations";
 
 type AnalysisViewProps = {

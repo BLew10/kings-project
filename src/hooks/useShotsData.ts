@@ -3,7 +3,8 @@ import { loadShots } from "@/lib/csv";
 import { DEFAULT_FILTERS } from "@/lib/filterSchema";
 import { getPlayerRows } from "@/lib/stats";
 import { filtersFromSearch } from "@/lib/urlState";
-import type { Filters, Shot } from "@/types/shots";
+import type { Shot } from "@/types/shots";
+import type { Filters } from "@/types/filters";
 
 export type HydratedState = {
   filters: Filters;

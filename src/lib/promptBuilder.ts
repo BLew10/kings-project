@@ -1,6 +1,7 @@
 import { booleanFilterLabel, filterLabel, formatPeriod, labelFor } from "@/lib/labels";
 import { formatPercent, formatPointsPerShot, formatZone } from "@/lib/shotModel";
-import type { BreakdownRow, Filters, MetricSummary, PlayerOption, ScalarBooleanFilter } from "@/types/shots";
+import type { Filters, ScalarBooleanFilter } from "@/types/filters";
+import type { BreakdownRow, MetricSummary, PlayerOption } from "@/types/analytics";
 
 export type FilterOptions = {
   players: PlayerOption[];

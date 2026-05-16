@@ -1,4 +1,4 @@
-import type { ScalarBooleanFilter } from "@/types/shots";
+import type { ScalarBooleanFilter } from "@/types/filters";
 
 export type FilterSegmentOption = { value: ScalarBooleanFilter; label: string };
 

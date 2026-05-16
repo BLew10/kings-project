@@ -12,7 +12,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ZoneLegend } from "@/components/zone/ZoneLegend";
 import { useSortedRows } from "@/hooks/useSortedRows";
 import { cn } from "@/lib/utils";
-import type { BreakdownRow, Shot } from "@/types/shots";
+import type { Shot } from "@/types/shots";
+import type { BreakdownRow } from "@/types/analytics";
 
 type PlayerTableProps = {
   rows: PlayerRow[];

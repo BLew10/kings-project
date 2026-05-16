@@ -2,7 +2,7 @@ import { FilterTooltip } from "@/components/filter/FilterTooltip";
 import type { FilterSegmentOption } from "@/components/filter/filterConstants";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import type { ScalarBooleanFilter } from "@/types/shots";
+import type { ScalarBooleanFilter } from "@/types/filters";
 
 type SegmentedFieldProps = {
   label: string;

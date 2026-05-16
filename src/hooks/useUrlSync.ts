@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { filtersToSearch } from "@/lib/urlState";
-import type { Filters } from "@/types/shots";
+import type { Filters } from "@/types/filters";
 import type { DashboardView } from "@/hooks/useDashboardComputations";
 
 type Options = {

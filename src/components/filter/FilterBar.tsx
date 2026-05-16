@@ -16,7 +16,9 @@ import { useFilterChips, type FilterChip } from "@/hooks/useFilterChips";
 import { DEFAULT_FILTERS, DRIBBLE_BUCKETS, PERIODS, SHOT_CLOCK_BUCKETS, SHOT_VALUES, SHOT_ZONES } from "@/lib/filterSchema";
 import { formatPeriod, labelFor } from "@/lib/labels";
 import { cn } from "@/lib/utils";
-import type { ContestLevel, Filters, PlayerOption, ShotType } from "@/types/shots";
+import type { ContestLevel, ShotType } from "@/types/shots";
+import type { Filters } from "@/types/filters";
+import type { PlayerOption } from "@/types/analytics";
 
 type FilterBarProps = {
   filters: Filters;

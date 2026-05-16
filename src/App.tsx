@@ -12,7 +12,7 @@ import { useShotsData } from "@/hooks/useShotsData";
 import { useUrlSync } from "@/hooks/useUrlSync";
 import { DEFAULT_FILTERS } from "@/lib/filterSchema";
 import { getSubjectCopy } from "@/lib/subjectCopy";
-import type { Filters } from "@/types/shots";
+import type { Filters } from "@/types/filters";
 
 function App() {
   const { shots, loading, error, hydrated, initial, reload } = useShotsData();

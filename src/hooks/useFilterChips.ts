@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { booleanFilterLabel, filterLabel, formatPeriod, labelFor } from "@/lib/labels";
-import type { Filters, PlayerOption } from "@/types/shots";
+import type { Filters } from "@/types/filters";
+import type { PlayerOption } from "@/types/analytics";
 
 export type FilterChip = {
   key: keyof Filters;

@@ -1,4 +1,4 @@
-import type { MetricSummary } from "@/types/shots";
+import type { MetricSummary } from "@/types/analytics";
 
 export type PlayerRow = MetricSummary & { playerId: string; player: string; playerLabel: string };
 

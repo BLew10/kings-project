@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { applyFilters, breakdownBy, getInsightFlags, summarize } from "@/lib/stats";
 import { formatZone } from "@/lib/shotModel";
-import type { BreakdownRow, Filters, MetricSummary, Shot } from "@/types/shots";
+import type { Shot } from "@/types/shots";
+import type { Filters } from "@/types/filters";
+import type { BreakdownRow, MetricSummary } from "@/types/analytics";
 import type { PlayerRow } from "@/components/player/playerTableColumns";
 
 type Options = {
