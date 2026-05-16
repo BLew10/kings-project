@@ -1,14 +1,11 @@
-import { Lightbulb } from "lucide-react";
 import { ActionPlanPrompt } from "@/components/ActionPlanPrompt";
 import { BreakdownFocus } from "@/components/BreakdownFocus";
-import { InsightSummary } from "@/components/InsightSummary";
 import { LineupBuilder } from "@/components/LineupBuilder";
 import { MetricGrid } from "@/components/MetricGrid";
 import { ShotCourt } from "@/components/ShotCourt";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { formatInsight } from "@/hooks/usePromptPlayerProfile";
 import type { FilterOptions } from "@/lib/promptBuilder";
-import type { BreakdownRow, Filters, MetricSummary, PlayerOption, Shot, RankedInsight } from "@/types/shots";
+import type { BreakdownRow, Filters, MetricSummary, PlayerOption, Shot } from "@/types/shots";
 import type { DashboardView } from "@/hooks/useDashboardComputations";
 
 type AnalysisViewProps = {
@@ -29,7 +26,6 @@ type AnalysisViewProps = {
     period: BreakdownRow[];
   };
   insights: string[];
-  rankedInsights: RankedInsight[];
   playerFocused: boolean;
   subject: string;
   filters: Filters;
@@ -47,7 +43,6 @@ export function AnalysisView({
   teamSummary,
   breakdowns,
   insights,
-  rankedInsights,
   playerFocused,
   subject,
   filters,
@@ -65,19 +60,6 @@ export function AnalysisView({
       ) : null}
 
       <MetricGrid summary={summary} teamSummary={teamSummary} showDelta={showDelta} />
-
-      {summary.attempts > 0 ? (
-        <Alert variant={insights.length ? "info" : "default"}>
-          <Lightbulb />
-          <AlertDescription>
-            {insights.length
-              ? formatInsight(insights[0])
-              : "No major zone-level deviations above the sample-size threshold for the current filter. Adjust filters to surface stronger signals."}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <InsightSummary insights={rankedInsights} />
 
       <section className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(320px,0.75fr)] xl:grid-cols-[minmax(0,0.85fr)_minmax(360px,0.65fr)]">
         <ShotCourt shots={activeShots} />

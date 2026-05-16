@@ -102,12 +102,3 @@ export type BreakdownRow = {
   share: number;
 };
 
-export type InsightPriority = "preserve" | "trim" | "role" | "caveat";
-
-export type RankedInsight = {
-  id: string;
-  priority: InsightPriority;
-  title: string;
-  detail: string;
-  attempts: number;
-};

@@ -11,7 +11,6 @@ import {
   getPlayerRows,
   getPlayerZoneShares,
   getPlayers,
-  getRankedInsights,
   groupShotsByPlayer,
   summarize,
 } from "@/lib/stats";
@@ -62,7 +61,6 @@ export function useDashboardComputations({ shots, filters, view, lineup }: Optio
   );
 
   const insights = useMemo(() => getInsightFlags(activeShots, teamShots), [activeShots, teamShots]);
-  const rankedInsights = useMemo(() => getRankedInsights(activeShots, teamShots), [activeShots, teamShots]);
 
   const dates = useMemo(() => shots.map((s) => s.date).sort(), [shots]);
   const minDate = dates[0] ?? "";
@@ -98,7 +96,6 @@ export function useDashboardComputations({ shots, filters, view, lineup }: Optio
     playerShots,
     breakdowns,
     insights,
-    rankedInsights,
     minDate,
     maxDate,
     shotTypes,

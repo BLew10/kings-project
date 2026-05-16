@@ -41,7 +41,6 @@ function App() {
     playerShots,
     breakdowns,
     insights,
-    rankedInsights,
     minDate,
     maxDate,
     shotTypes,
@@ -125,7 +124,6 @@ function App() {
                 teamSummary={teamSummary}
                 breakdowns={breakdowns}
                 insights={insights}
-                rankedInsights={rankedInsights}
                 playerFocused={playerFocused}
                 subject={subject}
                 filters={filters}
