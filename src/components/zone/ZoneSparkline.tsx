@@ -1,4 +1,4 @@
-import { ZONE_ORDER } from "@/components/zoneOrder";
+import { ZONE_ORDER } from "@/components/zone/zoneConstants";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatPointsPerShot, formatZone } from "@/lib/shotModel";
 import type { BreakdownRow } from "@/types/shots";

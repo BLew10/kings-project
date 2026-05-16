@@ -9,7 +9,7 @@ import {
 } from "@/components/player/playerTableColumns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ZoneLegend } from "@/components/ZoneLegend";
+import { ZoneLegend } from "@/components/zone/ZoneLegend";
 import { useSortedRows } from "@/hooks/useSortedRows";
 import { cn } from "@/lib/utils";
 import type { BreakdownRow, Shot } from "@/types/shots";

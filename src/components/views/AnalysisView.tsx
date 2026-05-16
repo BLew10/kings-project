@@ -1,8 +1,8 @@
-import { ActionPlanPrompt } from "@/components/ActionPlanPrompt";
-import { BreakdownFocus } from "@/components/BreakdownFocus";
-import { LineupBuilder } from "@/components/LineupBuilder";
-import { MetricGrid } from "@/components/MetricGrid";
-import { ShotCourt } from "@/components/ShotCourt";
+import { ActionPlanPrompt } from "@/components/ai/ActionPlanPrompt";
+import { BreakdownFocus } from "@/components/breakdown/BreakdownFocus";
+import { LineupBuilder } from "@/components/lineup/LineupBuilder";
+import { MetricGrid } from "@/components/metric/MetricGrid";
+import { ShotCourt } from "@/components/court/ShotCourt";
 import { formatInsight } from "@/hooks/usePromptPlayerProfile";
 import type { FilterOptions } from "@/lib/promptBuilder";
 import type { BreakdownRow, Filters, MetricSummary, PlayerOption, Shot } from "@/types/shots";

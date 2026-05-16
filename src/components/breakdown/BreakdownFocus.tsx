@@ -1,4 +1,4 @@
-import { BarList } from "@/components/BarList";
+import { BarList } from "@/components/barList/BarList";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { labelFor } from "@/lib/labels";

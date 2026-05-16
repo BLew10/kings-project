@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { DashboardFooter } from "@/components/DashboardFooter";
-import { DashboardHeader } from "@/components/DashboardHeader";
-import { ErrorState } from "@/components/ErrorState";
-import { FilterBar } from "@/components/FilterBar";
-import { SubjectHeader } from "@/components/SubjectHeader";
+import { DashboardFooter } from "@/components/dashboard/DashboardFooter";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { ErrorState } from "@/components/errorState/ErrorState";
+import { FilterBar } from "@/components/filter/FilterBar";
+import { SubjectHeader } from "@/components/subject/SubjectHeader";
 import { AnalysisView } from "@/components/views/AnalysisView";
 import { PlayersView } from "@/components/views/PlayersView";
 import { Card, CardContent } from "@/components/ui/card";

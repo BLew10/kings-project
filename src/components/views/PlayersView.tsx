@@ -1,5 +1,5 @@
-import { ActionPlanPrompt } from "@/components/ActionPlanPrompt";
-import { PlayerTable } from "@/components/PlayerTable";
+import { ActionPlanPrompt } from "@/components/ai/ActionPlanPrompt";
+import { PlayerTable } from "@/components/player/PlayerTable";
 import type { PlayerRow } from "@/components/player/playerTableColumns";
 import type { FilterOptions } from "@/lib/promptBuilder";
 import type { BreakdownRow, MetricSummary, Shot } from "@/types/shots";

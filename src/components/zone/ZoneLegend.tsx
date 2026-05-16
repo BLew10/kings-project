@@ -1,4 +1,4 @@
-import { ZONE_ORDER } from "@/components/zoneOrder";
+import { ZONE_ORDER } from "@/components/zone/zoneConstants";
 
 export function ZoneLegend() {
   return (

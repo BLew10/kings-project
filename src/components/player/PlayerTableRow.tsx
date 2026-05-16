@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
-import { ShotCourt } from "@/components/ShotCourt";
-import { ZoneSparkline } from "@/components/ZoneSparkline";
+import { ShotCourt } from "@/components/court/ShotCourt";
+import { ZoneSparkline } from "@/components/zone/ZoneSparkline";
 import { initials, type PlayerRow } from "@/components/player/playerTableColumns";
 import { formatPercent, formatPointsPerShot } from "@/lib/shotModel";
 import { cn } from "@/lib/utils";
