@@ -25,7 +25,7 @@ export function MetricGrid({ summary, teamSummary, showDelta }: MetricGridProps)
       <MetricCard
         label="Field Goal %"
         value={formatPercent(summary.fgPct)}
-        detail={`Team baseline: ${formatPercent(teamSummary.fgPct)}`}
+        detail={showDelta ? `Team baseline: ${formatPercent(teamSummary.fgPct)}` : undefined}
         icon={TrendingUp}
         tone={summary.attempts > 0 && fgDelta >= 0 ? "success" : "warning"}
         delta={
@@ -37,7 +37,7 @@ export function MetricGrid({ summary, teamSummary, showDelta }: MetricGridProps)
       <MetricCard
         label="Points / Shot"
         value={formatPointsPerShot(summary.pointsPerShot)}
-        detail={`Team baseline: ${formatPointsPerShot(teamSummary.pointsPerShot)}`}
+        detail={showDelta ? `Team baseline: ${formatPointsPerShot(teamSummary.pointsPerShot)}` : undefined}
         icon={LineChart}
         tone={ppsDelta >= 0 ? "success" : "warning"}
         delta={
