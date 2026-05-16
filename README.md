@@ -72,7 +72,29 @@ A single sticky filter bar drives the dashboard: player, shot type, shot detail,
 - The data is shot-level only. It does not include opponents, score, possessions, minutes, positions, or actual on-court lineup combinations.
 - The Lineup view is therefore a combined shot profile for five selected players, not true shared-court lineup performance. This caveat is shown directly in the UI.
 - Position breakdowns are intentionally omitted because the dataset does not include player positions.
-- Shot zones are derived from the provided court coordinates using pragmatic basketball distance thresholds (`src/lib/shotModel.ts`).
+- Shot zones and shot value are derived from the provided court coordinates because the source CSV includes `x`, `y`, and `outcome`, but no official `shot_value`, 2PT/3PT flag, or play-by-play scoring field.
+
+### Derived Shot Value And Three-Point Logic
+
+The app keeps a custom shot-value function because points per shot is materially more useful than raw FG% for shot-profile decisions. Without deriving 2PT vs 3PT value, a 35% three and a 45% long two would be compared only by FG%, even though the made-three attempt is worth more expected points.
+
+This is an example of value created from the fields the dataset did include. The CSV did not directly provide points, shot value, PPS, or a 2PT/3PT marker; it only provided location and outcome fields. By combining those available fields with NBA court geometry, the dashboard can add derived scoring context: made-shot points, points per shot, zone efficiency, PPS deltas against the team baseline, and more useful preserve/trim recommendations.
+
+The derivation lives in `src/lib/shotModel.ts` and uses the NBA court geometry against this dataset's coordinate system:
+
+- The offensive hoop is treated as `(-47, 0)`, matching the supplied court coordinates where the offensive half is on the negative-x side.
+- Shot distance is `sqrt((x - hoopX)^2 + (y - hoopY)^2)`.
+- Above-break threes are checked dynamically with `sqrt((x - hoopX)^2 + (y - hoopY)^2) >= 23.75`, so each shot is compared to the actual 23'9" arc from the basket rather than to a fixed top-of-arc bucket.
+- Corner threes use the official NBA sideline-parallel lines 3 feet from each sideline. Because the court is 50 feet wide, those lines sit at `|y| = 22` feet and run from the baseline until they intersect the 23'9" arc.
+- The corner-line endpoint is computed from the circle equation: `cornerEndX = hoopX + sqrt(23.75^2 - 22^2)`, which evaluates to about `-38.05` in this coordinate system.
+- Made shots beyond the derived three-point line count as 3 points; other made field goals count as 2.
+
+This is deterministic and grounded in official NBA dimensions, but it is still derived data. A production analytics pipeline should prefer official play-by-play, a 2PT/3PT flag, or reviewed shot metadata because real scoring can depend on foot placement relative to the line, line width, and scorekeeper/replay decisions that are not present in the CSV.
+
+Resources used for the math:
+
+- [NBA Official Rulebook, Rule No. 1: Court Dimensions](https://official.nba.com/rulebook/) — the three-point area is defined by sideline-parallel lines 3 feet from the sidelines and a 23'9" arc from the middle of the basket.
+- [Official 2025-26 NBA Playing Rules PDF](https://cdn.nba.com/manage/2026/01/Official-2025-26-NBA-Playing-Rules.pdf) — the court diagram shows the 22-foot corner distance and 23 feet 9 inches above-break arc; Rule No. 5 defines successful field goals outside the three-point line as 3 points and on/inside the line as 2 points.
 
 ## Tradeoffs
 
@@ -83,7 +105,7 @@ A single sticky filter bar drives the dashboard: player, shot type, shot detail,
 - **Custom SVG court vs charting library.** A custom component lets the heatmap encode two channels at once (hue = FG%, opacity = volume) without fighting a generic chart abstraction. Recharts or Visx would speed up the bar lists but would bring weight we don't need for three simple charts.
 - **Manual CSV parsing vs Papa Parse.** The CSV is well-structured and known. A small parser is sufficient. For user-uploaded or messy CSVs, Papa Parse would be safer.
 - **Local state vs global store.** Plain React state with memoized selectors is enough; a store would be premature without URL state, collaboration, or many cross-cutting views.
-- **Derived shot value instead of official scoring metadata.** The data dictionary does not include a 2PT/3PT flag, so points per shot is derived from the coordinate-based zone model. This is a better decision metric than FG% alone, but a production version would validate point value directly from play-by-play or official shot metadata.
+- **Derived shot value instead of official scoring metadata.** The data dictionary does not include a 2PT/3PT flag, so points per shot is derived from the coordinate-based zone model using official NBA three-point geometry. This is a better decision metric than FG% alone, but a production version would validate point value directly from play-by-play, official shot metadata, or replay-reviewed scoring.
 - **Lightweight recommendations vs complex modeling.** The recommendation notes use transparent zone deltas and sample thresholds instead of a black-box model. That makes the insight easy to explain and audit, but it is intentionally less sophisticated than an expected-shot model.
 - **URL state without account-level sharing.** Filters and the active tab are encoded in the query string for easy review links. If I had more time, I would add saved reports so coaches or front-office users could preserve a filtered view, shortlist insights, notes, and an action-plan prompt as a reusable analysis package.
 - **Compact app shell vs narrative report.** The product is designed as an exploratory work surface, not a slide deck. Coaches and analysts can change context quickly, but the app does not prescribe a single final story beyond the recommendation note.

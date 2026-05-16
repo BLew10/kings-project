@@ -1,21 +1,19 @@
 import type { Filters } from "@/types/shots";
-
-const ARRAY_KEYS = ["player", "shotType", "complexShotType", "contestLevel", "shotClockBucket"] as const;
-const SCALAR_KEYS = ["assisted", "catchAndShoot", "dateFrom", "dateTo"] as const;
+import { ARRAY_FILTER_KEYS, SCALAR_FILTER_KEYS } from "@/lib/filterSchema";
 
 /** Parses dashboard filters from a URL query string. */
 export function filtersFromSearch(search: string, defaults: Filters): Filters {
   const params = new URLSearchParams(search);
   const next: Filters = { ...defaults };
 
-  for (const key of ARRAY_KEYS) {
+  for (const key of ARRAY_FILTER_KEYS) {
     const value = params.get(key);
-    next[key] = value ? value.split(",").filter(Boolean) : defaults[key];
+    (next as Record<string, unknown>)[key] = value ? value.split(",").filter(Boolean) : defaults[key];
   }
 
-  for (const key of SCALAR_KEYS) {
+  for (const key of SCALAR_FILTER_KEYS) {
     const value = params.get(key);
-    next[key] = value ?? defaults[key];
+    (next as Record<string, unknown>)[key] = value || defaults[key];
   }
 
   return next;
@@ -25,11 +23,11 @@ export function filtersFromSearch(search: string, defaults: Filters): Filters {
 export function filtersToSearch(filters: Filters, defaults: Filters): string {
   const params = new URLSearchParams();
 
-  for (const key of ARRAY_KEYS) {
+  for (const key of ARRAY_FILTER_KEYS) {
     if (!sameArray(filters[key], defaults[key])) params.set(key, filters[key].join(","));
   }
 
-  for (const key of SCALAR_KEYS) {
+  for (const key of SCALAR_FILTER_KEYS) {
     if (filters[key] !== defaults[key]) params.set(key, filters[key]);
   }
 

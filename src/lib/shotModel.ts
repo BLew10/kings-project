@@ -2,6 +2,13 @@ import type { DribbleBucket, ShotClockBucket, ShotZone } from "../types/shots";
 
 const HOOP_X = -47;
 const HOOP_Y = 0;
+const HALF_COURT_X = 0;
+const CORNER_ABS_Y = 22;
+const ABOVE_BREAK_DISTANCE = 23.75;
+// Where the straight corner-3 line intersects the 23'9" arc:
+// (x - HOOP_X)^2 + y^2 = 23.75^2, with |y| fixed at 22.
+const CORNER_END_X = HOOP_X + Math.sqrt(ABOVE_BREAK_DISTANCE ** 2 - CORNER_ABS_Y ** 2);
+const BACKCOURT_MIN_DISTANCE = 47;
 
 /** Calculates Euclidean shot distance in feet from the modeled offensive hoop. */
 export function getShotDistance(x: number, y: number): number {
@@ -10,23 +17,32 @@ export function getShotDistance(x: number, y: number): number {
 
 /** Maps raw court coordinates to a pragmatic basketball shot zone. */
 export function getShotZone(x: number, y: number): ShotZone {
-  if (x > 0) return "backcourt";
+  if (x > HALF_COURT_X && getShotDistance(x, y) > BACKCOURT_MIN_DISTANCE) return "backcourt";
 
   const distance = getShotDistance(x, y);
   const absY = Math.abs(y);
 
+  if (isCornerThree(x, absY)) return "corner_three";
+  if (isThreePointShot(x, y)) return "above_break_three";
+
   if (distance <= 4) return "rim";
   if (distance <= 8) return "paint";
   if (distance <= 16) return "short_midrange";
+  return "long_midrange";
+}
 
-  const isThree = distance >= 23 || (x <= -33 && absY >= 22);
-  if (!isThree) return "long_midrange";
-  if (x <= -34 && absY >= 21) return "corner_three";
-  return "above_break_three";
+/** Returns whether coordinates are beyond the modeled three-point line. */
+export function isThreePointShot(x: number, y: number): boolean {
+  const distance = getShotDistance(x, y);
+  const absY = Math.abs(y);
+  // The above-break line is a true arc, so every non-corner shot is checked
+  // against its radial distance from the hoop, not against fixed x/y buckets.
+  return distance >= ABOVE_BREAK_DISTANCE || isCornerThree(x, absY);
 }
 
 /** Buckets shot-clock time into coaching-friendly possession phases. */
 export function getShotClockBucket(shotClock: number): ShotClockBucket {
+  if (!Number.isFinite(shotClock)) return "unknown";
   if (shotClock >= 18) return "early";
   if (shotClock >= 8) return "middle";
   if (shotClock >= 4) return "late";
@@ -35,15 +51,20 @@ export function getShotClockBucket(shotClock: number): ShotClockBucket {
 
 /** Buckets dribble count into compact labels for filtering and summary text. */
 export function getDribbleBucket(dribbles: number): DribbleBucket {
+  if (!Number.isFinite(dribbles)) return "unknown";
   if (dribbles === 0) return "0";
   if (dribbles === 1) return "1";
   if (dribbles <= 3) return "2-3";
   return "4+";
 }
 
-/** Returns the point value implied by a derived shot zone. */
-export function getShotValue(zone: ShotZone): 2 | 3 {
-  return zone === "corner_three" || zone === "above_break_three" || zone === "backcourt" ? 3 : 2;
+/** Returns the point value implied by raw coordinates. */
+export function getShotValue(x: number, y: number): 2 | 3 {
+  return isThreePointShot(x, y) ? 3 : 2;
+}
+
+function isCornerThree(x: number, absY: number): boolean {
+  return absY >= CORNER_ABS_Y && x <= CORNER_END_X;
 }
 
 /** Formats derived shot zones for display. */

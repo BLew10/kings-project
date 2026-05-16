@@ -10,7 +10,6 @@ export function ErrorState({ onRetry, retrying = false }: ErrorStateProps) {
   return (
     <section
       role="alert"
-      aria-live="polite"
       className="mx-auto flex w-full max-w-lg flex-col items-center py-16 text-center"
     >
       <span className="flex size-16 items-center justify-center rounded-full bg-rose-50 text-rose-600">

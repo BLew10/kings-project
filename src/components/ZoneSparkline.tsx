@@ -19,13 +19,18 @@ type ZoneSparklineProps = {
 
 export function ZoneSparkline({ rows, className }: ZoneSparklineProps) {
   const byKey = new Map(rows.map((r) => [r.key, r]));
-  const segments = ZONE_ORDER.map((z) => ({
+  const rawSegments = ZONE_ORDER.map((z) => ({
     ...z,
     share: byKey.get(z.key)?.share ?? 0,
     fgPct: byKey.get(z.key)?.fgPct ?? 0,
     pointsPerShot: byKey.get(z.key)?.pointsPerShot ?? 0,
     attempts: byKey.get(z.key)?.attempts ?? 0,
   })).filter((s) => s.share > 0);
+  const totalShare = rawSegments.reduce((sum, segment) => sum + segment.share, 0);
+  const segments = rawSegments.map((segment) => ({
+    ...segment,
+    normalizedShare: totalShare > 0 ? segment.share / totalShare : 0,
+  }));
 
   if (segments.length === 0) {
     return <div className={className ?? "h-2 w-full rounded-full bg-muted"} />;
@@ -44,7 +49,7 @@ export function ZoneSparkline({ rows, className }: ZoneSparklineProps) {
             <div
               key={s.key}
               className="h-full first:rounded-l-full last:rounded-r-full"
-              style={{ width: `${s.share * 100}%`, backgroundColor: s.color }}
+              style={{ width: `${s.normalizedShare * 100}%`, backgroundColor: s.color }}
             />
           ))}
         </div>

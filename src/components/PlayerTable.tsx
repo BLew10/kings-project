@@ -8,12 +8,12 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ZoneLegend, ZoneSparkline } from "@/components/ZoneSparkline";
 
-type PlayerRow = MetricSummary & { player: string };
+type PlayerRow = MetricSummary & { playerId: string; player: string; playerLabel: string };
 
 type PlayerTableProps = {
   rows: PlayerRow[];
   selectedPlayer?: string;
-  onSelectPlayer?: (player: string | undefined) => void;
+  onSelectPlayer?: (playerId: string | undefined) => void;
   /** Optional per-player zone breakdown. When provided, renders a Shot Mix sparkline column. */
   playerZones?: Record<string, BreakdownRow[]>;
   /** Optional per-player shot attempts. When provided, selected rows expand to a location heatmap. */
@@ -52,21 +52,21 @@ export function PlayerTable({
   const showSparkline = !!playerZones;
   const totalColumns = COLUMNS.length + (showSparkline ? 1 : 0) + (interactive ? 1 : 0);
 
-  const handleSelectPlayer = (player: string) => {
+  const handleSelectPlayer = (playerId: string) => {
     if (!interactive) return;
-    onSelectPlayer(selectedPlayer === player ? undefined : player);
+    onSelectPlayer(selectedPlayer === playerId ? undefined : playerId);
   };
 
   const sorted = useMemo(() => {
     const copy = [...rows];
     copy.sort((a, b) => {
-      const va = a[sortKey] as number | string;
-      const vb = b[sortKey] as number | string;
+      const va = (sortKey === "player" ? a.playerLabel : a[sortKey]) as number | string;
+      const vb = (sortKey === "player" ? b.playerLabel : b[sortKey]) as number | string;
       if (typeof va === "string" && typeof vb === "string") {
         return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
       }
-      const na = va as number;
-      const nb = vb as number;
+      const na = Number.isFinite(va) ? (va as number) : Number.NEGATIVE_INFINITY;
+      const nb = Number.isFinite(vb) ? (vb as number) : Number.NEGATIVE_INFINITY;
       return sortDir === "asc" ? na - nb : nb - na;
     });
     return copy;
@@ -101,16 +101,20 @@ export function PlayerTable({
                   {COLUMNS.map((col) => (
                     <th
                       key={col.key}
-                      onClick={() => toggleSort(col.key)}
+                      aria-sort={sortKey === col.key ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
                       className={cn(
-                        "px-4 py-1.5 font-medium select-none cursor-pointer hover:text-foreground",
+                        "px-4 py-1.5 font-medium select-none",
                         col.align === "right" ? "text-right" : "text-left",
                       )}
                     >
-                      <span className={cn("inline-flex items-center gap-1", col.align === "right" && "flex-row-reverse")}>
+                      <button
+                        type="button"
+                        onClick={() => toggleSort(col.key)}
+                        className={cn("inline-flex items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", col.align === "right" && "flex-row-reverse")}
+                      >
                         {col.label}
                         <SortIcon active={sortKey === col.key} dir={sortDir} />
-                      </span>
+                      </button>
                     </th>
                   ))}
                   {showSparkline ? (
@@ -121,26 +125,32 @@ export function PlayerTable({
               </thead>
               <tbody className="divide-y divide-border">
                 {sorted.map((row) => {
-                  const selected = selectedPlayer === row.player;
-                  const shots = playerShots?.[row.player] ?? [];
+                  const selected = selectedPlayer === row.playerId;
+                  const shots = playerShots?.[row.playerId] ?? [];
                   return (
-                    <Fragment key={row.player}>
+                    <Fragment key={row.playerId}>
                       <tr
-                        onClick={interactive ? () => handleSelectPlayer(row.player) : undefined}
-                        aria-expanded={interactive ? selected : undefined}
                         className={cn(
                           "transition-colors",
-                          interactive && "cursor-pointer hover:bg-accent/40",
                           selected && "bg-accent/60 hover:bg-accent/60",
                         )}
                       >
                         <td className="px-4 py-1.5">
-                          <div className="flex items-center gap-2.5">
+                          <button
+                            type="button"
+                            onClick={interactive ? () => handleSelectPlayer(row.playerId) : undefined}
+                            aria-expanded={interactive ? selected : undefined}
+                            disabled={!interactive}
+                            className={cn(
+                              "flex w-full items-center gap-2.5 rounded-sm text-left disabled:cursor-default",
+                              interactive && "hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            )}
+                          >
                             <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
                               {initials(row.player)}
                             </span>
-                            <span className={cn("font-medium", selected && "text-primary")}>{row.player}</span>
-                          </div>
+                            <span className={cn("font-medium", selected && "text-primary")}>{row.playerLabel}</span>
+                          </button>
                         </td>
                         <td className="px-4 py-1.5 text-right tabular-nums">{row.attempts.toLocaleString()}</td>
                         <td className="px-4 py-1.5 text-right tabular-nums">{formatPercent(row.fgPct)}</td>
@@ -150,17 +160,25 @@ export function PlayerTable({
                         <td className="px-4 py-1.5 text-right tabular-nums">{row.avgDribbles.toFixed(1)}</td>
                         {showSparkline ? (
                           <td className="px-4 py-1.5">
-                            <ZoneSparkline rows={playerZones![row.player] ?? []} />
+                            <ZoneSparkline rows={playerZones![row.playerId] ?? []} />
                           </td>
                         ) : null}
                         {interactive ? (
                           <td className="px-2 py-1.5 text-right">
-                            <ChevronRight
-                              className={cn(
-                                "size-4 text-muted-foreground/60 transition-transform",
-                                selected && "rotate-90 text-primary",
-                              )}
-                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSelectPlayer(row.playerId)}
+                              aria-label={`${selected ? "Collapse" : "Expand"} ${row.playerLabel}`}
+                              aria-expanded={selected}
+                              className="rounded-sm p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              <ChevronRight
+                                className={cn(
+                                  "size-4 text-muted-foreground/60 transition-transform",
+                                  selected && "rotate-90 text-primary",
+                                )}
+                              />
+                            </button>
                           </td>
                         ) : null}
                       </tr>
@@ -172,7 +190,7 @@ export function PlayerTable({
                                 <div className="min-w-0">
                                   <ShotCourt
                                     shots={shots}
-                                    title={`${row.player} Location Efficiency`}
+                                    title={`${row.playerLabel} Location Efficiency`}
                                     description={`${shots.length.toLocaleString()} attempts · color = FG%, opacity = volume`}
                                     embedded
                                   />
@@ -181,7 +199,7 @@ export function PlayerTable({
                               </div>
                             ) : (
                               <div className="rounded-lg border border-dashed border-border bg-card px-4 py-6 text-sm text-muted-foreground">
-                                No shot locations match the current filters for {row.player}.
+                                No shot locations match the current filters for {row.playerLabel}.
                               </div>
                             )}
                           </td>

@@ -43,7 +43,7 @@ export function ShotCourt({
     anchorY: number;
   } | null>(null);
   const bins = useMemo(() => getBins(shots), [shots]);
-  const maxBinAttempts = useMemo(() => Math.max(...bins.map((b) => b.attempts), 1), [bins]);
+  const maxBinAttempts = useMemo(() => bins.reduce((max, bin) => Math.max(max, bin.attempts), 1), [bins]);
 
   useEffect(() => {
     setHovered(null);
@@ -174,6 +174,7 @@ function toCourtPoint(x: number, y: number) {
 function getBins(shots: Shot[]) {
   const groups = new Map<string, { x: number; y: number; attempts: number; makes: number; points: number }>();
   for (const shot of shots) {
+    if (!Number.isFinite(shot.x) || !Number.isFinite(shot.y)) continue;
     const x = Math.round(shot.x / 3) * 3;
     const y = Math.round(shot.y / 3) * 3;
     const key = `${x}:${y}`;

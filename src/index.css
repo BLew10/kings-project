@@ -96,7 +96,8 @@
 
   /* Subtle focus ring everywhere */
   :focus-visible {
-    outline: none;
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
   }
 }
 

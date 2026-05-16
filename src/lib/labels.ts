@@ -38,6 +38,13 @@ export function labelFor(value: string): string {
     corner_three: "Corner 3",
     above_break_three: "Above-Break 3",
     backcourt: "Backcourt",
+    unknown: "Unknown",
+    "0": "0 Dribbles",
+    "1": "1 Dribble",
+    "2-3": "2-3 Dribbles",
+    "4+": "4+ Dribbles",
+    "2": "2-Point Attempts",
+    "3": "3-Point Attempts",
   };
 
   return labels[value] ?? titleize(value);
@@ -50,9 +57,18 @@ export function filterLabel(key: string): string {
     shotType: "Shot Type",
     complexShotType: "Shot Detail",
     contestLevel: "Contest Level",
+    zone: "Zone",
     assisted: "Creation",
     catchAndShoot: "Touch Type",
+    assistOpportunity: "Assist Opportunity",
+    blocked: "Blocked",
+    fouled: "Fouled",
+    contested: "Contested",
+    outcome: "Outcome",
     shotClockBucket: "Shot Clock",
+    dribbleBucket: "Dribbles",
+    shotValue: "Shot Value",
+    period: "Period",
     dateFrom: "From",
     dateTo: "To",
   };
@@ -64,6 +80,11 @@ export function filterLabel(key: string): string {
 export function booleanFilterLabel(key: string, value: string): string {
   if (key === "assisted") return value === "true" ? "Assisted" : "Self-Created";
   if (key === "catchAndShoot") return value === "true" ? "Catch and Shoot" : "Off the Dribble";
+  if (key === "assistOpportunity") return value === "true" ? "Assist Opportunity" : "No Assist Opportunity";
+  if (key === "blocked") return value === "true" ? "Blocked" : "Not Blocked";
+  if (key === "fouled") return value === "true" ? "Fouled" : "Not Fouled";
+  if (key === "contested") return value === "true" ? "Contested" : "Uncontested";
+  if (key === "outcome") return value === "true" ? "Makes" : "Misses";
   return value;
 }
 

@@ -1,6 +1,7 @@
 export type ShotOutcome = "TRUE" | "FALSE";
 export type ContestLevel = "uncontested" | "lightly_contested" | "heavily_contested";
 export type ShotType = "heave" | "jumper" | "post" | "floater" | "layup";
+export type ScalarBooleanFilter = "all" | "true" | "false";
 
 export type Shot = {
   shooterId: string;
@@ -44,19 +45,34 @@ export type ShotZone =
   | "above_break_three"
   | "backcourt";
 
-export type ShotClockBucket = "early" | "middle" | "late" | "end";
-export type DribbleBucket = "0" | "1" | "2-3" | "4+";
+export type ShotClockBucket = "early" | "middle" | "late" | "end" | "unknown";
+export type DribbleBucket = "0" | "1" | "2-3" | "4+" | "unknown";
 
 export type Filters = {
   player: string[];
-  shotType: string[];
+  shotType: ShotType[];
   complexShotType: string[];
-  contestLevel: string[];
-  assisted: string;
-  catchAndShoot: string;
-  shotClockBucket: string[];
+  contestLevel: ContestLevel[];
+  zone: ShotZone[];
+  shotClockBucket: ShotClockBucket[];
+  dribbleBucket: DribbleBucket[];
+  shotValue: Array<"2" | "3">;
+  period: string[];
+  assisted: ScalarBooleanFilter;
+  catchAndShoot: ScalarBooleanFilter;
+  assistOpportunity: ScalarBooleanFilter;
+  blocked: ScalarBooleanFilter;
+  fouled: ScalarBooleanFilter;
+  contested: ScalarBooleanFilter;
+  outcome: ScalarBooleanFilter;
   dateFrom: string;
   dateTo: string;
+};
+
+export type PlayerOption = {
+  id: string;
+  name: string;
+  label: string;
 };
 
 export type MetricSummary = {
@@ -71,6 +87,9 @@ export type MetricSummary = {
   fouledPct: number;
   avgShotClock: number;
   avgDribbles: number;
+  avgDistance: number;
+  avgShotDuration: number;
+  avgPassDistance: number;
 };
 
 export type BreakdownRow = {

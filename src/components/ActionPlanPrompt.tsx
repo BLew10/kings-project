@@ -2,7 +2,7 @@ import { Check, Clipboard, WandSparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { booleanFilterLabel, filterLabel, labelFor } from "@/lib/labels";
 import { formatPercent, formatPointsPerShot, formatZone } from "@/lib/shotModel";
-import type { BreakdownRow, Filters, MetricSummary } from "@/types/shots";
+import type { BreakdownRow, Filters, MetricSummary, PlayerOption, ScalarBooleanFilter } from "@/types/shots";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,11 +22,15 @@ type ActionPlanPromptProps = {
 };
 
 export type FilterOptions = {
-  players: string[];
+  players: PlayerOption[];
   shotTypes: string[];
   shotDetails: string[];
   contestLevels: string[];
   shotClockBuckets: string[];
+  zones: string[];
+  dribbleBuckets: string[];
+  shotValues: string[];
+  periods: string[];
 };
 
 export function ActionPlanPrompt({
@@ -74,13 +78,17 @@ export function ActionPlanPrompt({
   );
 
   const copyPrompt = async () => {
+    let copiedText = false;
     try {
       await navigator.clipboard.writeText(prompt);
+      copiedText = true;
     } catch {
-      fallbackCopy(prompt);
+      copiedText = fallbackCopy(prompt);
     }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    if (copiedText) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    }
   };
 
   return (
@@ -162,8 +170,13 @@ function buildPrompt({
     `- Points per shot: ${formatPointsPerShot(summary.pointsPerShot)}`,
     `- Assisted rate: ${formatPercent(summary.assistedPct)}`,
     `- Catch-and-shoot rate: ${formatPercent(summary.catchShootPct)}`,
+    `- Blocked rate: ${formatPercent(summary.blockedPct)}`,
+    `- Fouled rate: ${formatPercent(summary.fouledPct)}`,
     `- Average dribbles before shot: ${summary.avgDribbles.toFixed(1)}`,
     `- Average shot clock: ${summary.avgShotClock.toFixed(1)} seconds`,
+    `- Average distance: ${summary.avgDistance.toFixed(1)} feet`,
+    `- Average shot release window: ${summary.avgShotDuration.toFixed(1)} seconds`,
+    `- Average pass distance on assisted/pass-tracked shots: ${summary.avgPassDistance.toFixed(1)} feet`,
     `- ${baselineLine}`,
     "",
     "Zone profile:",
@@ -201,13 +214,22 @@ function formatRows(rows: BreakdownRow[], formatKey: (key: string) => string): s
 /** Formats the active filter state for the copy-ready AI prompt. */
 function formatFilters(filters: Filters, filterOptions: FilterOptions): string {
   const formatted = [
-    `- ${filterLabel("player")}: ${formatMultiFilter(filters.player, filterOptions.players, (value) => value)}`,
+    `- ${filterLabel("player")}: ${formatMultiFilter(filters.player, filterOptions.players.map((player) => player.id), playerLabeler(filterOptions.players))}`,
     `- ${filterLabel("shotType")}: ${formatMultiFilter(filters.shotType, filterOptions.shotTypes, labelFor)}`,
     `- ${filterLabel("complexShotType")}: ${formatMultiFilter(filters.complexShotType, filterOptions.shotDetails, labelFor)}`,
     `- ${filterLabel("contestLevel")}: ${formatMultiFilter(filters.contestLevel, filterOptions.contestLevels, labelFor)}`,
+    `- ${filterLabel("zone")}: ${formatMultiFilter(filters.zone, filterOptions.zones, labelFor)}`,
     `- ${filterLabel("assisted")}: ${formatBooleanFilter("assisted", filters.assisted)}`,
     `- ${filterLabel("catchAndShoot")}: ${formatBooleanFilter("catchAndShoot", filters.catchAndShoot)}`,
+    `- ${filterLabel("assistOpportunity")}: ${formatBooleanFilter("assistOpportunity", filters.assistOpportunity)}`,
+    `- ${filterLabel("blocked")}: ${formatBooleanFilter("blocked", filters.blocked)}`,
+    `- ${filterLabel("fouled")}: ${formatBooleanFilter("fouled", filters.fouled)}`,
+    `- ${filterLabel("contested")}: ${formatBooleanFilter("contested", filters.contested)}`,
+    `- ${filterLabel("outcome")}: ${formatBooleanFilter("outcome", filters.outcome)}`,
     `- ${filterLabel("shotClockBucket")}: ${formatMultiFilter(filters.shotClockBucket, filterOptions.shotClockBuckets, labelFor)}`,
+    `- ${filterLabel("dribbleBucket")}: ${formatMultiFilter(filters.dribbleBucket, filterOptions.dribbleBuckets, labelFor)}`,
+    `- ${filterLabel("shotValue")}: ${formatMultiFilter(filters.shotValue, filterOptions.shotValues, labelFor)}`,
+    `- ${filterLabel("period")}: ${formatMultiFilter(filters.period, filterOptions.periods, (value) => `Period ${value}`)}`,
   ];
 
   formatted.push(`- Date range: ${filters.dateFrom || "start"} to ${filters.dateTo || "end"}`);
@@ -226,10 +248,11 @@ function formatMultiFilter(
 }
 
 /** Formats one scalar filter value for prompt context. */
-function formatBooleanFilter(key: "assisted" | "catchAndShoot", value: string): string {
+function formatBooleanFilter(key: "assisted" | "catchAndShoot" | "assistOpportunity" | "blocked" | "fouled" | "contested" | "outcome", value: ScalarBooleanFilter): string {
   if (value !== "all") return booleanFilterLabel(key, value);
   if (key === "assisted") return "All (Assisted, Self-Created)";
-  return "All (Catch and Shoot, Off the Dribble)";
+  if (key === "catchAndShoot") return "All (Catch and Shoot, Off the Dribble)";
+  return "All (Yes, No)";
 }
 
 /** Formats a decimal-rate delta as percentage points with an explicit sign. */
@@ -241,7 +264,12 @@ function formatSignedPoints(value: number): string {
 }
 
 /** Copies text through a temporary textarea when the Clipboard API is unavailable. */
-function fallbackCopy(value: string) {
+function playerLabeler(players: PlayerOption[]) {
+  const labels = new Map(players.map((player) => [player.id, player.label]));
+  return (value: string) => labels.get(value) ?? value;
+}
+
+function fallbackCopy(value: string): boolean {
   const textarea = document.createElement("textarea");
   textarea.value = value;
   textarea.setAttribute("readonly", "");
@@ -249,6 +277,7 @@ function fallbackCopy(value: string) {
   textarea.style.top = "-9999px";
   document.body.appendChild(textarea);
   textarea.select();
-  document.execCommand("copy");
+  const copied = document.execCommand("copy");
   document.body.removeChild(textarea);
+  return copied;
 }

@@ -14,7 +14,7 @@ import { ActionPlanPrompt } from "@/components/ActionPlanPrompt";
 import type { FilterOptions } from "@/components/ActionPlanPrompt";
 import { BarList } from "@/components/BarList";
 import { ErrorState } from "@/components/ErrorState";
-import { FilterBar } from "@/components/filter-bar";
+import { FilterBar } from "@/components/FilterBar";
 import { InsightSummary } from "@/components/InsightSummary";
 import { LineupBuilder } from "@/components/LineupBuilder";
 import { MetricCard } from "@/components/MetricCard";
@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { loadShots } from "@/lib/csv";
+import { DEFAULT_FILTERS, DRIBBLE_BUCKETS, PERIODS, SHOT_CLOCK_BUCKETS, SHOT_VALUES, SHOT_ZONES } from "@/lib/filterSchema";
 import { labelFor } from "@/lib/labels";
 import { formatPercent, formatPointsPerShot, formatZone } from "@/lib/shotModel";
 import {
@@ -36,6 +37,7 @@ import {
   getPlayerRows,
   getPlayerZoneShares,
   getPlayers,
+  groupShotsByPlayer,
   getRankedInsights,
   summarize,
 } from "@/lib/stats";
@@ -44,20 +46,6 @@ import type { Filters as FilterState, Shot } from "@/types/shots";
 
 type View = "team" | "players" | "lineup";
 
-const SHOT_CLOCK_BUCKETS = ["early", "middle", "late", "end"];
-
-const DEFAULT_FILTERS: FilterState = {
-  player: [],
-  shotType: [],
-  complexShotType: [],
-  contestLevel: [],
-  assisted: "all",
-  catchAndShoot: "all",
-  shotClockBucket: [],
-  dateFrom: "",
-  dateTo: "",
-};
-
 function App() {
   const [shots, setShots] = useState<Shot[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +53,7 @@ function App() {
   const [lineup, setLineup] = useState<string[]>([]);
   const [selectedPromptPlayer, setSelectedPromptPlayer] = useState<string | undefined>();
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadDashboard = useCallback(() => {
@@ -76,12 +65,23 @@ function App() {
           dateFrom: dates[0] ?? "",
           dateTo: dates[dates.length - 1] ?? "",
         };
+        const initialFilters = filtersFromSearch(window.location.search, defaults);
+        const playerRows = getPlayerRows(data);
+        const playerIds = new Set(playerRows.map((row) => row.playerId));
+        const params = new URLSearchParams(window.location.search);
+        const requestedLineup = (params.get("lineup") ?? "")
+          .split(",")
+          .filter((id) => playerIds.has(id))
+          .slice(0, 5);
+        const requestedPromptPlayer = params.get("promptPlayer") ?? undefined;
         setShots(data);
-        setFilters(filtersFromSearch(window.location.search, defaults));
+        setFilters(initialFilters);
         // Seed lineup with the five highest-volume shooters so the Lineup view
         // shows something useful the first time it's opened.
-        const topFive = getPlayerRows(data).slice(0, 5).map((row) => row.player);
-        setLineup(topFive);
+        const topFive = playerRows.slice(0, 5).map((row) => row.playerId);
+        setLineup(requestedLineup.length ? requestedLineup : topFive);
+        setSelectedPromptPlayer(requestedPromptPlayer && playerIds.has(requestedPromptPlayer) ? requestedPromptPlayer : undefined);
+        setHydrated(true);
       })
       .catch((caught: unknown) =>
         setError(caught instanceof Error ? caught.message : "Unable to load data"),
@@ -112,14 +112,18 @@ function App() {
   const playerZones = useMemo(() => getPlayerZoneShares(teamShots), [teamShots]);
   const playerShots = useMemo(() => {
     const grouped: Record<string, Shot[]> = {};
-    for (const shot of teamShots) {
-      (grouped[shot.shooterName] ??= []).push(shot);
+    for (const [playerId, shots] of groupShotsByPlayer(teamShots)) {
+      grouped[playerId] = shots;
     }
     return grouped;
   }, [teamShots]);
   const zoneRows = useMemo(() => breakdownBy(activeShots, (s) => s.zone), [activeShots]);
   const typeRows = useMemo(() => breakdownBy(activeShots, (s) => s.complexShotType), [activeShots]);
   const contextRows = useMemo(() => breakdownBy(activeShots, (s) => s.contestLevel), [activeShots]);
+  const clockRows = useMemo(() => breakdownBy(activeShots, (s) => s.shotClockBucket), [activeShots]);
+  const dribbleRows = useMemo(() => breakdownBy(activeShots, (s) => s.dribbleBucket), [activeShots]);
+  const valueRows = useMemo(() => breakdownBy(activeShots, (s) => `${s.shotValue}`), [activeShots]);
+  const periodRows = useMemo(() => breakdownBy(activeShots, (s) => `Period ${s.period}`), [activeShots]);
   const insights = useMemo(() => getInsightFlags(activeShots, teamShots), [activeShots, teamShots]);
   const formattedInsights = useMemo(() => insights.map(formatInsight), [insights]);
 
@@ -145,25 +149,34 @@ function App() {
       shotDetails: complexShotTypes,
       contestLevels,
       shotClockBuckets: SHOT_CLOCK_BUCKETS,
+      zones: SHOT_ZONES,
+      dribbleBuckets: DRIBBLE_BUCKETS,
+      shotValues: SHOT_VALUES,
+      periods: [...PERIODS],
     }),
     [complexShotTypes, contestLevels, players, shotTypes],
   );
   const rankedInsights = useMemo(() => getRankedInsights(activeShots, teamShots), [activeShots, teamShots]);
 
   useEffect(() => {
-    if (!shots.length) return;
+    if (!hydrated || !shots.length) return;
     const params = new URLSearchParams(filtersToSearch(filters, defaultFilters));
     if (view !== "team") params.set("view", view);
+    if (view === "lineup" && lineup.length) params.set("lineup", lineup.join(","));
+    if (view === "players" && selectedPromptPlayer) params.set("promptPlayer", selectedPromptPlayer);
     const next = params.toString();
     const nextUrl = `${window.location.pathname}${next ? `?${next}` : ""}${window.location.hash}`;
     window.history.replaceState(null, "", nextUrl);
-  }, [defaultFilters, filters, shots.length, view]);
+  }, [defaultFilters, filters, hydrated, lineup, selectedPromptPlayer, shots.length, view]);
 
   const playerFocused = view === "team" && filters.player.length > 0;
   const promptPlayer =
-    selectedPromptPlayer && playerRows.some((row) => row.player === selectedPromptPlayer)
+    selectedPromptPlayer && playerRows.some((row) => row.playerId === selectedPromptPlayer)
       ? selectedPromptPlayer
       : undefined;
+  const promptPlayerLabel = promptPlayer
+    ? playerRows.find((row) => row.playerId === promptPlayer)?.playerLabel ?? promptPlayer
+    : undefined;
   const promptPlayerFilters = useMemo(
     () => ({ ...teamFilters, player: promptPlayer ? [promptPlayer] : [] }),
     [promptPlayer, teamFilters],
@@ -192,12 +205,12 @@ function App() {
       ? "Player Comparison"
       : view === "lineup"
         ? lineup.length
-          ? `Lineup: ${lineup.join(", ")}`
+          ? `Lineup: ${lineup.map((id) => players.find((player) => player.id === id)?.label ?? id).join(", ")}`
           : "Empty lineup"
         : playerFocused
           ? filters.player.length === 1
-            ? filters.player[0]
-            : `Selected Players: ${filters.player.join(", ")}`
+            ? players.find((player) => player.id === filters.player[0])?.label ?? filters.player[0]
+            : `Selected Players: ${filters.player.map((id) => players.find((player) => player.id === id)?.label ?? id).join(", ")}`
           : "Assumed Team Profile";
 
   const subjectDescription =
@@ -245,180 +258,184 @@ function App() {
         {error ? (
           <ErrorState onRetry={handleRetry} retrying={loading} />
         ) : (
-        <>
-        <Card>
-          <CardContent className="py-5">
-            <FilterBar
-              filters={filters}
-              players={players}
-              shotTypes={shotTypes}
-              complexShotTypes={complexShotTypes}
-              contestLevels={contestLevels}
-              minDate={minDate}
-              maxDate={maxDate}
-              onChange={setFilters}
-              hidePlayerFilter={view !== "team"}
-            />
-          </CardContent>
-        </Card>
-
-        <section className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Now viewing</p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight">{subject}</h2>
-            <p className="mt-1 text-sm text-muted-foreground max-w-2xl">{subjectDescription}</p>
-          </div>
-          <Badge variant="outline" className="px-3 py-1 text-sm">
-            {view === "players"
-              ? `${playerRows.length} players · ${teamShots.length.toLocaleString()} attempts`
-              : `${summary.attempts.toLocaleString()} attempts in view`}
-          </Badge>
-        </section>
-
-        {view === "players" ? (
           <>
-            <PlayerTable
-              rows={playerRows}
-              playerZones={playerZones}
-              playerShots={playerShots}
-              selectedPlayer={selectedPromptPlayer}
-              onSelectPlayer={setSelectedPromptPlayer}
-              description="Click a column header to sort. Click a row to open that player's location efficiency heatmap and action-plan prompt."
-              expandedContent={
-                promptPlayer ? (
-                  <ActionPlanPrompt
-                    subject={promptPlayer}
-                    mode="player"
-                    filters={promptPlayerFilters}
-                    filterOptions={promptFilterOptions}
-                    summary={promptPlayerSummary}
-                    baselineSummary={teamSummary}
-                    zoneRows={promptPlayerZones}
-                    shotDetailRows={promptPlayerTypes}
-                    contextRows={promptPlayerContexts}
-                    insights={promptPlayerInsights}
-                  />
-                ) : null
-              }
-            />
-          </>
-        ) : (
-          <>
-            {view === "lineup" ? (
-              <LineupBuilder players={players} selected={lineup} onChange={setLineup} />
-            ) : null}
-
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-              <MetricCard
-                label="Attempts"
-                value={summary.attempts.toLocaleString()}
-                detail={`${summary.makes.toLocaleString()} makes`}
-                icon={Target}
-                tone="default"
-              />
-              <MetricCard
-                label="Field Goal %"
-                value={formatPercent(summary.fgPct)}
-                detail={`Team baseline: ${formatPercent(teamSummary.fgPct)}`}
-                icon={TrendingUp}
-                tone={summary.attempts > 0 && fgDelta >= 0 ? "success" : "warning"}
-                delta={
-                  showDelta
-                    ? {
-                        value: `${(Math.abs(fgDelta) * 100).toFixed(1)} pts`,
-                        positive: fgDelta >= 0,
-                      }
-                    : undefined
-                }
-              />
-              <MetricCard
-                label="Points / Shot"
-                value={formatPointsPerShot(summary.pointsPerShot)}
-                detail={`Team baseline: ${formatPointsPerShot(teamSummary.pointsPerShot)}`}
-                icon={LineChart}
-                tone={summary.pointsPerShot >= teamSummary.pointsPerShot ? "success" : "warning"}
-                delta={
-                  showDelta
-                    ? {
-                        value: `${Math.abs(summary.pointsPerShot - teamSummary.pointsPerShot).toFixed(2)} PPS`,
-                        positive: summary.pointsPerShot >= teamSummary.pointsPerShot,
-                      }
-                    : undefined
-                }
-              />
-              <MetricCard
-                label="Assisted Rate"
-                value={formatPercent(summary.assistedPct)}
-                detail={`Catch & shoot: ${formatPercent(summary.catchShootPct)}`}
-                icon={Users}
-                tone="primary"
-              />
-              <MetricCard
-                label="Avg Dribbles"
-                value={summary.avgDribbles.toFixed(1)}
-                detail={`Shot clock avg: ${summary.avgShotClock.toFixed(1)}s`}
-                icon={Activity}
-                tone="default"
-              />
-            </section>
-
-            {summary.attempts > 0 ? (
-              <Alert variant={insights.length ? "info" : "default"}>
-                <Lightbulb />
-                <AlertDescription>
-                  {insights.length
-                    ? formatInsight(insights[0])
-                    : "No major zone-level deviations above the sample-size threshold for the current filter. Adjust filters to surface stronger signals."}
-                </AlertDescription>
-              </Alert>
-            ) : null}
-
-            <InsightSummary insights={rankedInsights} />
-
-            <section className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-              <ShotCourt shots={activeShots} />
-              <div className="grid grid-cols-1 gap-4">
-                <BarList title="Zone Profile" rows={zoneRows} maxRows={7} description="Where shots come from." />
-                <BarList
-                  title="Shot Detail Mix"
-                  rows={typeRows}
-                  maxRows={6}
-                  formatKey={labelFor}
-                  description="Top shot types within the current filter."
+            <Card>
+              <CardContent className="py-5">
+                <FilterBar
+                  filters={filters}
+                  players={players}
+                  shotTypes={shotTypes}
+                  complexShotTypes={complexShotTypes}
+                  contestLevels={contestLevels}
+                  minDate={minDate}
+                  maxDate={maxDate}
+                  onChange={setFilters}
+                  hidePlayerFilter={view !== "team"}
                 />
-                <RecommendationCard insights={insights} attempts={summary.attempts} />
+              </CardContent>
+            </Card>
+
+            <section className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Now viewing</p>
+                <h2 className="mt-1 text-2xl font-semibold tracking-tight">{subject}</h2>
+                <p className="mt-1 text-sm text-muted-foreground max-w-2xl">{subjectDescription}</p>
               </div>
+              <Badge variant="outline" className="px-3 py-1 text-sm">
+                {view === "players"
+                  ? `${playerRows.length} players · ${teamShots.length.toLocaleString()} attempts`
+                  : `${summary.attempts.toLocaleString()} attempts in view`}
+              </Badge>
             </section>
 
-            {view === "lineup" ? (
-              <BarList
-                title="Contest Context"
-                rows={contextRows}
-                formatKey={labelFor}
-                description="Defensive pressure distribution across the selected lineup's shots."
-              />
+            {view === "players" ? (
+              <>
+                <PlayerTable
+                  rows={playerRows}
+                  playerZones={playerZones}
+                  playerShots={playerShots}
+                  selectedPlayer={selectedPromptPlayer}
+                  onSelectPlayer={setSelectedPromptPlayer}
+                  description="Click a column header to sort. Click a row to open that player's location efficiency heatmap and action-plan prompt."
+                  expandedContent={
+                    promptPlayer ? (
+                      <ActionPlanPrompt
+                        subject={promptPlayerLabel ?? promptPlayer}
+                        mode="player"
+                        filters={promptPlayerFilters}
+                        filterOptions={promptFilterOptions}
+                        summary={promptPlayerSummary}
+                        baselineSummary={teamSummary}
+                        zoneRows={promptPlayerZones}
+                        shotDetailRows={promptPlayerTypes}
+                        contextRows={promptPlayerContexts}
+                        insights={promptPlayerInsights}
+                      />
+                    ) : null
+                  }
+                />
+              </>
+            ) : (
+              <>
+                {view === "lineup" ? (
+                  <LineupBuilder players={players} selected={lineup} onChange={setLineup} />
+                ) : null}
+
+                <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                  <MetricCard
+                    label="Attempts"
+                    value={summary.attempts.toLocaleString()}
+                    detail={`${summary.makes.toLocaleString()} makes`}
+                    icon={Target}
+                    tone="default"
+                  />
+                  <MetricCard
+                    label="Field Goal %"
+                    value={formatPercent(summary.fgPct)}
+                    detail={`Team baseline: ${formatPercent(teamSummary.fgPct)}`}
+                    icon={TrendingUp}
+                    tone={summary.attempts > 0 && fgDelta >= 0 ? "success" : "warning"}
+                    delta={
+                      showDelta
+                        ? {
+                          value: `${(Math.abs(fgDelta) * 100).toFixed(1)} pts`,
+                          positive: fgDelta >= 0,
+                        }
+                        : undefined
+                    }
+                  />
+                  <MetricCard
+                    label="Points / Shot"
+                    value={formatPointsPerShot(summary.pointsPerShot)}
+                    detail={`Team baseline: ${formatPointsPerShot(teamSummary.pointsPerShot)}`}
+                    icon={LineChart}
+                    tone={summary.pointsPerShot >= teamSummary.pointsPerShot ? "success" : "warning"}
+                    delta={
+                      showDelta
+                        ? {
+                          value: `${Math.abs(summary.pointsPerShot - teamSummary.pointsPerShot).toFixed(2)} PPS`,
+                          positive: summary.pointsPerShot >= teamSummary.pointsPerShot,
+                        }
+                        : undefined
+                    }
+                  />
+                  <MetricCard
+                    label="Assisted Rate"
+                    value={formatPercent(summary.assistedPct)}
+                    detail={`Catch & shoot: ${formatPercent(summary.catchShootPct)}`}
+                    icon={Users}
+                    tone="primary"
+                  />
+                  <MetricCard
+                    label="Avg Dribbles"
+                    value={summary.avgDribbles.toFixed(1)}
+                    detail={`Clock: ${summary.avgShotClock.toFixed(1)}s · Release: ${summary.avgShotDuration.toFixed(1)}s`}
+                    icon={Activity}
+                    tone="default"
+                  />
+                </section>
+
+                {summary.attempts > 0 ? (
+                  <Alert variant={insights.length ? "info" : "default"}>
+                    <Lightbulb />
+                    <AlertDescription>
+                      {insights.length
+                        ? formatInsight(insights[0])
+                        : "No major zone-level deviations above the sample-size threshold for the current filter. Adjust filters to surface stronger signals."}
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+
+                <InsightSummary insights={rankedInsights} />
+
+                <section className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+                  <ShotCourt shots={activeShots} />
+                  <div className="grid grid-cols-1 gap-4">
+                    <BarList title="Zone Profile" rows={zoneRows} maxRows={7} description="Where shots come from." />
+                    <BarList
+                      title="Shot Detail Mix"
+                      rows={typeRows}
+                      maxRows={6}
+                      formatKey={labelFor}
+                      description="Top shot types within the current filter."
+                    />
+                    <BarList title="Shot Clock" rows={clockRows} maxRows={5} formatKey={labelFor} description="Possession phase for attempts." />
+                    <BarList title="Dribble Context" rows={dribbleRows} maxRows={5} formatKey={labelFor} description="How much self-creation preceded the shot." />
+                    <RecommendationCard insights={insights} attempts={summary.attempts} />
+                  </div>
+                </section>
+
+                <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                  <BarList
+                    title="Contest Context"
+                    rows={contextRows}
+                    formatKey={labelFor}
+                    description="Defensive pressure distribution across selected shots."
+                  />
+                  <BarList title="Shot Value" rows={valueRows} formatKey={labelFor} description="Two-point versus three-point attempt mix." />
+                  <BarList title="Period" rows={periodRows} formatKey={(key) => key} description="Game period distribution for selected attempts." />
+                </section>
+
+                <ActionPlanPrompt
+                  subject={subject}
+                  mode={view === "lineup" ? "lineup" : playerFocused ? "player" : "team"}
+                  filters={view === "lineup" ? teamFilters : filters}
+                  filterOptions={promptFilterOptions}
+                  summary={summary}
+                  baselineSummary={teamSummary}
+                  zoneRows={zoneRows}
+                  shotDetailRows={typeRows}
+                  contextRows={contextRows}
+                  insights={formattedInsights}
+                  lineup={view === "lineup" ? lineup.map((id) => players.find((player) => player.id === id)?.label ?? id) : undefined}
+                />
+              </>
+            )}
+
+            {loading ? (
+              <p className="text-center text-xs text-muted-foreground">Loading shot data…</p>
             ) : null}
-
-            <ActionPlanPrompt
-              subject={subject}
-              mode={view === "lineup" ? "lineup" : playerFocused ? "player" : "team"}
-              filters={view === "lineup" ? teamFilters : filters}
-              filterOptions={promptFilterOptions}
-              summary={summary}
-              baselineSummary={teamSummary}
-              zoneRows={zoneRows}
-              shotDetailRows={typeRows}
-              contextRows={contextRows}
-              insights={formattedInsights}
-              lineup={view === "lineup" ? lineup : undefined}
-            />
           </>
-        )}
-
-        {loading ? (
-          <p className="text-center text-xs text-muted-foreground">Loading shot data…</p>
-        ) : null}
-        </>
         )}
       </main>
 

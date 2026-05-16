@@ -1,8 +1,9 @@
 import { CalendarDays, Check, ChevronDown, RotateCcw, SlidersHorizontal, Users, X } from "lucide-react";
 import { useMemo } from "react";
+import { DRIBBLE_BUCKETS, PERIODS, SHOT_CLOCK_BUCKETS, SHOT_VALUES, SHOT_ZONES } from "@/lib/filterSchema";
 import { booleanFilterLabel, filterLabel, labelFor } from "@/lib/labels";
 import { cn } from "@/lib/utils";
-import type { Filters as FilterState } from "@/types/shots";
+import type { ContestLevel, Filters as FilterState, PlayerOption, ScalarBooleanFilter, ShotType } from "@/types/shots";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,10 +11,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 type FilterBarProps = {
   filters: FilterState;
-  players: string[];
-  shotTypes: string[];
+  players: PlayerOption[];
+  shotTypes: ShotType[];
   complexShotTypes: string[];
-  contestLevels: string[];
+  contestLevels: ContestLevel[];
   minDate: string;
   maxDate: string;
   onChange: (filters: FilterState) => void;
@@ -21,23 +22,28 @@ type FilterBarProps = {
   hidePlayerFilter?: boolean;
 };
 
-const SHOT_CLOCK_BUCKETS: Array<{ value: string; label: string }> = [
-  { value: "early", label: "Early (18-24s)" },
-  { value: "middle", label: "Middle (8-17s)" },
-  { value: "late", label: "Late (4-7s)" },
-  { value: "end", label: "End (0-3s)" },
-];
-
-const CREATION_OPTIONS = [
+const CREATION_OPTIONS: Array<{ value: ScalarBooleanFilter; label: string }> = [
   { value: "all", label: "Any" },
   { value: "true", label: "Assisted" },
   { value: "false", label: "Self-created" },
 ];
 
-const TOUCH_OPTIONS = [
+const TOUCH_OPTIONS: Array<{ value: ScalarBooleanFilter; label: string }> = [
   { value: "all", label: "Any" },
   { value: "true", label: "Catch & shoot" },
   { value: "false", label: "Off dribble" },
+];
+
+const BOOLEAN_FILTER_OPTIONS: Array<{ value: ScalarBooleanFilter; label: string }> = [
+  { value: "all", label: "Any" },
+  { value: "true", label: "Yes" },
+  { value: "false", label: "No" },
+];
+
+const OUTCOME_OPTIONS: Array<{ value: ScalarBooleanFilter; label: string }> = [
+  { value: "all", label: "Any" },
+  { value: "true", label: "Make" },
+  { value: "false", label: "Miss" },
 ];
 
 export function FilterBar({
@@ -55,17 +61,27 @@ export function FilterBar({
 
   const activeChips = useMemo(() => {
     const chips: Array<{ key: keyof FilterState; label: string; value: string; resetTo: FilterState[keyof FilterState] }> = [];
-    if (!hidePlayerFilter && filters.player.length > 0) chips.push({ key: "player", label: filterLabel("player"), value: formatSelection(filters.player, (value) => value), resetTo: [] });
+    const playerLabels = new Map(players.map((player) => [player.id, player.label]));
+    if (!hidePlayerFilter && filters.player.length > 0) chips.push({ key: "player", label: filterLabel("player"), value: formatSelection(filters.player, (value) => playerLabels.get(value) ?? value), resetTo: [] });
     if (filters.shotType.length > 0) chips.push({ key: "shotType", label: filterLabel("shotType"), value: formatSelection(filters.shotType, labelFor), resetTo: [] });
     if (filters.complexShotType.length > 0) chips.push({ key: "complexShotType", label: filterLabel("complexShotType"), value: formatSelection(filters.complexShotType, labelFor), resetTo: [] });
     if (filters.contestLevel.length > 0) chips.push({ key: "contestLevel", label: filterLabel("contestLevel"), value: formatSelection(filters.contestLevel, labelFor), resetTo: [] });
+    if (filters.zone.length > 0) chips.push({ key: "zone", label: filterLabel("zone"), value: formatSelection(filters.zone, labelFor), resetTo: [] });
     if (filters.shotClockBucket.length > 0) chips.push({ key: "shotClockBucket", label: filterLabel("shotClockBucket"), value: formatSelection(filters.shotClockBucket, labelFor), resetTo: [] });
+    if (filters.dribbleBucket.length > 0) chips.push({ key: "dribbleBucket", label: filterLabel("dribbleBucket"), value: formatSelection(filters.dribbleBucket, labelFor), resetTo: [] });
+    if (filters.shotValue.length > 0) chips.push({ key: "shotValue", label: filterLabel("shotValue"), value: formatSelection(filters.shotValue, labelFor), resetTo: [] });
+    if (filters.period.length > 0) chips.push({ key: "period", label: filterLabel("period"), value: formatSelection(filters.period, (value) => `Period ${value}`), resetTo: [] });
     if (filters.assisted !== "all") chips.push({ key: "assisted", label: filterLabel("assisted"), value: booleanFilterLabel("assisted", filters.assisted), resetTo: "all" });
     if (filters.catchAndShoot !== "all") chips.push({ key: "catchAndShoot", label: filterLabel("catchAndShoot"), value: booleanFilterLabel("catchAndShoot", filters.catchAndShoot), resetTo: "all" });
+    if (filters.assistOpportunity !== "all") chips.push({ key: "assistOpportunity", label: filterLabel("assistOpportunity"), value: booleanFilterLabel("assistOpportunity", filters.assistOpportunity), resetTo: "all" });
+    if (filters.blocked !== "all") chips.push({ key: "blocked", label: filterLabel("blocked"), value: booleanFilterLabel("blocked", filters.blocked), resetTo: "all" });
+    if (filters.fouled !== "all") chips.push({ key: "fouled", label: filterLabel("fouled"), value: booleanFilterLabel("fouled", filters.fouled), resetTo: "all" });
+    if (filters.contested !== "all") chips.push({ key: "contested", label: filterLabel("contested"), value: booleanFilterLabel("contested", filters.contested), resetTo: "all" });
+    if (filters.outcome !== "all") chips.push({ key: "outcome", label: filterLabel("outcome"), value: booleanFilterLabel("outcome", filters.outcome), resetTo: "all" });
     if (filters.dateFrom && filters.dateFrom !== minDate) chips.push({ key: "dateFrom", label: "From", value: filters.dateFrom, resetTo: minDate });
     if (filters.dateTo && filters.dateTo !== maxDate) chips.push({ key: "dateTo", label: "To", value: filters.dateTo, resetTo: maxDate });
     return chips;
-  }, [filters, hidePlayerFilter, minDate, maxDate]);
+  }, [filters, hidePlayerFilter, maxDate, minDate, players]);
 
   const reset = () =>
     onChange({
@@ -73,9 +89,18 @@ export function FilterBar({
       shotType: [],
       complexShotType: [],
       contestLevel: [],
+      zone: [],
       assisted: "all",
       catchAndShoot: "all",
+      assistOpportunity: "all",
+      blocked: "all",
+      fouled: "all",
+      contested: "all",
+      outcome: "all",
       shotClockBucket: [],
+      dribbleBucket: [],
+      shotValue: [],
+      period: [],
       dateFrom: minDate,
       dateTo: maxDate,
     });
@@ -86,9 +111,9 @@ export function FilterBar({
       return;
     }
     const days = preset === "7d" ? 7 : preset === "30d" ? 30 : 60;
-    const end = new Date(maxDate);
+    const end = new Date(`${maxDate}T00:00:00`);
     const start = new Date(end);
-    start.setDate(end.getDate() - days);
+    start.setDate(end.getDate() - (days - 1));
     const startIso = start.toISOString().slice(0, 10);
     onChange({
       ...filters,
@@ -111,7 +136,7 @@ export function FilterBar({
           <FilterField icon={<Users className="size-3.5" />} label="Player">
             <MultiSelect
               value={filters.player}
-              options={players.map((player) => ({ value: player, label: player }))}
+              options={players.map((player) => ({ value: player.id, label: player.label }))}
               allLabel="All players"
               onChange={(value) => update("player", value)}
             />
@@ -172,7 +197,7 @@ export function FilterBar({
                       type="date"
                       min={minDate}
                       max={maxDate}
-                      value={filters.dateFrom}
+                      value={filters.dateFrom || ""}
                       onChange={(e) => update("dateFrom", e.target.value)}
                       className="block w-full rounded-md border border-input bg-card px-2 py-1.5 text-sm shadow-xs focus:outline-none focus:ring-2 focus:ring-ring"
                     />
@@ -183,7 +208,7 @@ export function FilterBar({
                       type="date"
                       min={minDate}
                       max={maxDate}
-                      value={filters.dateTo}
+                      value={filters.dateTo || ""}
                       onChange={(e) => update("dateTo", e.target.value)}
                       className="block w-full rounded-md border border-input bg-card px-2 py-1.5 text-sm shadow-xs focus:outline-none focus:ring-2 focus:ring-ring"
                     />
@@ -202,59 +227,100 @@ export function FilterBar({
         <FilterField label="Shot clock">
           <MultiSelect
             value={filters.shotClockBucket}
-            options={SHOT_CLOCK_BUCKETS}
+            options={SHOT_CLOCK_BUCKETS.map((bucket) => ({ value: bucket, label: labelFor(bucket) }))}
             allLabel="Any shot clock"
             onChange={(value) => update("shotClockBucket", value)}
           />
         </FilterField>
       </div>
 
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <FilterField label="Zone">
+          <MultiSelect
+            value={filters.zone}
+            options={SHOT_ZONES.map((zone) => ({ value: zone, label: labelFor(zone) }))}
+            allLabel="Any zone"
+            onChange={(value) => update("zone", value)}
+          />
+        </FilterField>
+        <FilterField label="Dribbles">
+          <MultiSelect
+            value={filters.dribbleBucket}
+            options={DRIBBLE_BUCKETS.map((bucket) => ({ value: bucket, label: labelFor(bucket) }))}
+            allLabel="Any dribble count"
+            onChange={(value) => update("dribbleBucket", value)}
+          />
+        </FilterField>
+        <FilterField label="Shot value">
+          <MultiSelect
+            value={filters.shotValue}
+            options={SHOT_VALUES.map((value) => ({ value, label: labelFor(value) }))}
+            allLabel="2s and 3s"
+            onChange={(value) => update("shotValue", value)}
+          />
+        </FilterField>
+        <FilterField label="Period">
+          <MultiSelect
+            value={filters.period}
+            options={PERIODS.map((period) => ({ value: period, label: `Period ${period}` }))}
+            allLabel="Any period"
+            onChange={(value) => update("period", value)}
+          />
+        </FilterField>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <SegmentedField label="Outcome" value={filters.outcome} options={OUTCOME_OPTIONS} onChange={(v) => update("outcome", v)} />
+        <SegmentedField label="Assist opp" value={filters.assistOpportunity} options={BOOLEAN_FILTER_OPTIONS} onChange={(v) => update("assistOpportunity", v)} />
+        <SegmentedField label="Blocked" value={filters.blocked} options={BOOLEAN_FILTER_OPTIONS} onChange={(v) => update("blocked", v)} />
+        <SegmentedField label="Fouled" value={filters.fouled} options={BOOLEAN_FILTER_OPTIONS} onChange={(v) => update("fouled", v)} />
+        <SegmentedField label="Contested" value={filters.contested} options={BOOLEAN_FILTER_OPTIONS} onChange={(v) => update("contested", v)} />
+      </div>
+
       {/* Active chips + reset */}
-      {(activeChips.length > 0 || true) && (
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          {activeChips.length > 0 ? (
-            <>
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                <SlidersHorizontal className="size-3.5" />
-                Active filters
-              </span>
-              {activeChips.map((chip) => (
-                <Badge
-                  key={chip.key}
-                  variant="secondary"
-                  className="cursor-pointer pl-2 pr-1 py-1 gap-1 hover:bg-secondary/70"
-                  onClick={() => onChange({ ...filters, [chip.key]: chip.resetTo })}
-                >
-                  <span className="font-normal text-secondary-foreground/70">{chip.label}:</span>
-                  <span className="font-medium">{chip.value}</span>
-                  <X className="size-3.5 opacity-60" />
-                </Badge>
-              ))}
-              <Button variant="ghost" size="sm" onClick={reset} className="text-muted-foreground hover:text-foreground">
-                <RotateCcw className="size-3.5" />
-                Reset all
-              </Button>
-            </>
-          ) : (
-            <span className="text-xs text-muted-foreground">No filters applied · showing every shot in the dataset.</span>
-          )}
-        </div>
-      )}
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        {activeChips.length > 0 ? (
+          <>
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <SlidersHorizontal className="size-3.5" />
+              Active filters
+            </span>
+            {activeChips.map((chip) => (
+              <Badge
+                key={chip.key}
+                variant="secondary"
+                className="cursor-pointer pl-2 pr-1 py-1 gap-1 hover:bg-secondary/70"
+                onClick={() => onChange({ ...filters, [chip.key]: chip.resetTo })}
+              >
+                <span className="font-normal text-secondary-foreground/70">{chip.label}:</span>
+                <span className="font-medium">{chip.value}</span>
+                <X className="size-3.5 opacity-60" />
+              </Badge>
+            ))}
+            <Button variant="ghost" size="sm" onClick={reset} className="text-muted-foreground hover:text-foreground">
+              <RotateCcw className="size-3.5" />
+              Reset all
+            </Button>
+          </>
+        ) : (
+          <span className="text-xs text-muted-foreground">No filters applied · showing every shot in the dataset.</span>
+        )}
+      </div>
     </div>
   );
 }
 
 /** Renders a compact popover-based multi-select filter. */
-function MultiSelect({
+function MultiSelect<T extends string>({
   value,
   options,
   allLabel,
   onChange,
 }: {
-  value: string[];
-  options: Array<{ value: string; label: string }>;
+  value: T[];
+  options: Array<{ value: T; label: string }>;
   allLabel: string;
-  onChange: (value: string[]) => void;
+  onChange: (value: T[]) => void;
 }) {
   const selected = new Set(value);
   const label =
@@ -264,7 +330,7 @@ function MultiSelect({
         ? options.find((option) => option.value === value[0])?.label ?? value[0]
         : `${value.length} selected`;
 
-  const toggle = (optionValue: string) => {
+  const toggle = (optionValue: T) => {
     if (selected.has(optionValue)) {
       onChange(value.filter((item) => item !== optionValue));
       return;
@@ -344,9 +410,9 @@ function SegmentedField({
   onChange,
 }: {
   label: string;
-  value: string;
-  options: Array<{ value: string; label: string }>;
-  onChange: (value: string) => void;
+  value: ScalarBooleanFilter;
+  options: Array<{ value: ScalarBooleanFilter; label: string }>;
+  onChange: (value: ScalarBooleanFilter) => void;
 }) {
   return (
     <div className="space-y-1.5">

@@ -3,9 +3,10 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import type { PlayerOption } from "@/types/shots";
 
 type LineupBuilderProps = {
-  players: string[];
+  players: PlayerOption[];
   selected: string[];
   onChange: (players: string[]) => void;
 };
@@ -14,12 +15,12 @@ export function LineupBuilder({ players, selected, onChange }: LineupBuilderProp
   const lineupFull = selected.length >= 5;
 
   /** Toggles one player while enforcing the five-player lineup cap. */
-  const togglePlayer = (player: string) => {
-    if (selected.includes(player)) {
-      onChange(selected.filter((item) => item !== player));
+  const togglePlayer = (playerId: string) => {
+    if (selected.includes(playerId)) {
+      onChange(selected.filter((item) => item !== playerId));
       return;
     }
-    if (!lineupFull) onChange([...selected, player]);
+    if (!lineupFull) onChange([...selected, playerId]);
   };
 
   return (
@@ -41,13 +42,13 @@ export function LineupBuilder({ players, selected, onChange }: LineupBuilderProp
         <TooltipProvider delayDuration={200}>
           <div className="flex flex-wrap gap-1.5">
             {players.map((player) => {
-              const isSelected = selected.includes(player);
+              const isSelected = selected.includes(player.id);
               const isDisabled = !isSelected && lineupFull;
               const pill = (
                 <button
                   type="button"
-                  key={player}
-                  onClick={() => togglePlayer(player)}
+                  key={player.id}
+                  onClick={() => togglePlayer(player.id)}
                   disabled={isDisabled}
                   className={cn(
                     "rounded-md border px-2.5 py-1 text-xs font-medium transition-all",
@@ -58,12 +59,12 @@ export function LineupBuilder({ players, selected, onChange }: LineupBuilderProp
                     isDisabled && "opacity-40 cursor-not-allowed hover:border-border hover:bg-card",
                   )}
                 >
-                  {player}
+                  {player.label}
                 </button>
               );
               if (isDisabled) {
                 return (
-                  <Tooltip key={player}>
+                  <Tooltip key={player.id}>
                     <TooltipTrigger asChild>{pill}</TooltipTrigger>
                     <TooltipContent>Lineup is full — remove a player first.</TooltipContent>
                   </Tooltip>

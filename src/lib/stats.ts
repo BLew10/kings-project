@@ -1,17 +1,26 @@
 import { labelFor } from "./labels";
 import { formatPointsPerShot, formatZone } from "./shotModel";
-import type { BreakdownRow, Filters, MetricSummary, RankedInsight, Shot } from "../types/shots";
+import type { BreakdownRow, Filters, MetricSummary, PlayerOption, RankedInsight, Shot } from "../types/shots";
 
 /** Applies all dashboard filters to a shot collection. */
 export function applyFilters(shots: Shot[], filters: Filters): Shot[] {
   return shots.filter((shot) => {
-    if (filters.player.length > 0 && !filters.player.includes(shot.shooterName)) return false;
+    if (filters.player.length > 0 && !filters.player.includes(shot.shooterId)) return false;
     if (filters.shotType.length > 0 && !filters.shotType.includes(shot.shotType)) return false;
     if (filters.complexShotType.length > 0 && !filters.complexShotType.includes(shot.complexShotType)) return false;
     if (filters.contestLevel.length > 0 && !filters.contestLevel.includes(shot.contestLevel)) return false;
+    if (filters.zone.length > 0 && !filters.zone.includes(shot.zone)) return false;
     if (filters.assisted !== "all" && String(shot.assisted) !== filters.assisted) return false;
     if (filters.catchAndShoot !== "all" && String(shot.catchAndShoot) !== filters.catchAndShoot) return false;
+    if (filters.assistOpportunity !== "all" && String(shot.assistOpportunity) !== filters.assistOpportunity) return false;
+    if (filters.blocked !== "all" && String(shot.blocked) !== filters.blocked) return false;
+    if (filters.fouled !== "all" && String(shot.fouled) !== filters.fouled) return false;
+    if (filters.contested !== "all" && String(shot.contested) !== filters.contested) return false;
+    if (filters.outcome !== "all" && String(shot.outcome) !== filters.outcome) return false;
     if (filters.shotClockBucket.length > 0 && !filters.shotClockBucket.includes(shot.shotClockBucket)) return false;
+    if (filters.dribbleBucket.length > 0 && !filters.dribbleBucket.includes(shot.dribbleBucket)) return false;
+    if (filters.shotValue.length > 0 && !filters.shotValue.includes(String(shot.shotValue) as "2" | "3")) return false;
+    if (filters.period.length > 0 && !filters.period.includes(String(shot.period))) return false;
     if (filters.dateFrom && shot.date < filters.dateFrom) return false;
     if (filters.dateTo && shot.date > filters.dateTo) return false;
     return true;
@@ -23,7 +32,10 @@ export function summarize(shots: Shot[]): MetricSummary {
   const attempts = shots.length;
   const makes = shots.filter((shot) => shot.outcome).length;
   const points = shots.reduce((total, shot) => total + (shot.outcome ? shot.shotValue : 0), 0);
-  const sum = <T extends number>(values: T[]) => values.reduce((total, value) => total + value, 0);
+  const averageFinite = (values: number[]) => {
+    const finite = values.filter(Number.isFinite);
+    return finite.length ? finite.reduce((total, value) => total + value, 0) / finite.length : 0;
+  };
   const rate = (count: number) => (attempts ? count / attempts : 0);
 
   return {
@@ -36,8 +48,17 @@ export function summarize(shots: Shot[]): MetricSummary {
     catchShootPct: rate(shots.filter((shot) => shot.catchAndShoot).length),
     blockedPct: rate(shots.filter((shot) => shot.blocked).length),
     fouledPct: rate(shots.filter((shot) => shot.fouled).length),
-    avgShotClock: attempts ? sum(shots.map((shot) => shot.shotClock)) / attempts : 0,
-    avgDribbles: attempts ? sum(shots.map((shot) => shot.dribblesBefore)) / attempts : 0,
+    avgShotClock: averageFinite(shots.map((shot) => shot.shotClock)),
+    avgDribbles: averageFinite(shots.map((shot) => shot.dribblesBefore)),
+    avgDistance: averageFinite(shots.map((shot) => shot.distance)),
+    avgShotDuration: averageFinite(shots.map((shot) => shot.startGameClock - shot.endGameClock)),
+    avgPassDistance: averageFinite(
+      shots.map((shot) =>
+        shot.passerX === null || shot.passerY === null
+          ? Number.NaN
+          : Math.hypot(shot.x - shot.passerX, shot.y - shot.passerY),
+      ),
+    ),
   };
 }
 
@@ -46,7 +67,9 @@ export function breakdownBy(shots: Shot[], getKey: (shot: Shot) => string): Brea
   const groups = new Map<string, Shot[]>();
   for (const shot of shots) {
     const key = getKey(shot);
-    groups.set(key, [...(groups.get(key) ?? []), shot]);
+    const group = groups.get(key);
+    if (group) group.push(shot);
+    else groups.set(key, [shot]);
   }
 
   return [...groups.entries()]
@@ -66,32 +89,50 @@ export function breakdownBy(shots: Shot[], getKey: (shot: Shot) => string): Brea
     .sort((a, b) => b.attempts - a.attempts);
 }
 
-/** Returns the sorted unique player names in a shot collection. */
-export function getPlayers(shots: Shot[]): string[] {
-  return [...new Set(shots.map((shot) => shot.shooterName))].sort();
+/** Returns sorted unique player options keyed by stable shooter id. */
+export function getPlayers(shots: Shot[]): PlayerOption[] {
+  const byId = new Map<string, string>();
+  for (const shot of shots) {
+    byId.set(shot.shooterId, shot.shooterName);
+  }
+
+  const nameCounts = new Map<string, number>();
+  for (const name of byId.values()) {
+    nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
+  }
+
+  return [...byId.entries()]
+    .map(([id, name]) => ({
+      id,
+      name,
+      label: (nameCounts.get(name) ?? 0) > 1 ? `${name} (${id.slice(0, 8)})` : name,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 /** Returns sorted unique values for a shot field selector. */
-export function getOptions(shots: Shot[], getKey: (shot: Shot) => string): string[] {
+export function getOptions<T extends string>(shots: Shot[], getKey: (shot: Shot) => T): T[] {
   return [...new Set(shots.map(getKey))].sort();
 }
 
 /** Builds sortable per-player summary rows. */
 export function getPlayerRows(shots: Shot[]) {
-  return getPlayers(shots)
-    .map((player) => {
-      const playerShots = shots.filter((shot) => shot.shooterName === player);
-      return { player, ...summarize(playerShots) };
-    })
-    .sort((a, b) => b.attempts - a.attempts);
+  const nameCounts = playerNameCounts(shots);
+  return [...groupShotsByPlayer(shots).entries()]
+    .map(([playerId, playerShots]) => ({
+      playerId,
+      player: playerShots[0]?.shooterName ?? playerId,
+      playerLabel: playerLabelFor(playerId, playerShots[0]?.shooterName ?? playerId, nameCounts),
+      ...summarize(playerShots),
+    }))
+    .sort((a, b) => b.attempts - a.attempts || a.playerLabel.localeCompare(b.playerLabel));
 }
 
 /** Builds per-player zone share rows used by the player comparison sparkline. */
 export function getPlayerZoneShares(shots: Shot[]): Record<string, BreakdownRow[]> {
   const result: Record<string, BreakdownRow[]> = {};
-  for (const player of getPlayers(shots)) {
-    const playerShots = shots.filter((shot) => shot.shooterName === player);
-    result[player] = breakdownBy(playerShots, (shot) => shot.zone);
+  for (const [playerId, playerShots] of groupShotsByPlayer(shots)) {
+    result[playerId] = breakdownBy(playerShots, (shot) => shot.zone);
   }
   return result;
 }
@@ -179,7 +220,35 @@ export function getRankedInsights(shots: Shot[], baseline: Shot[]): RankedInsigh
 /** Filters a shot collection down to the selected lineup players. */
 export function getLineupShots(shots: Shot[], selectedPlayers: string[]): Shot[] {
   const selected = new Set(selectedPlayers);
-  return shots.filter((shot) => selected.has(shot.shooterName));
+  return shots.filter((shot) => selected.has(shot.shooterId));
+}
+
+/** Groups shots by the stable shooter id. */
+export function groupShotsByPlayer(shots: Shot[]): Map<string, Shot[]> {
+  const groups = new Map<string, Shot[]>();
+  for (const shot of shots) {
+    const group = groups.get(shot.shooterId);
+    if (group) group.push(shot);
+    else groups.set(shot.shooterId, [shot]);
+  }
+  return groups;
+}
+
+export function playerLabelFor(playerId: string, playerName: string, nameCounts: Map<string, number>): string {
+  return (nameCounts.get(playerName) ?? 0) > 1 ? `${playerName} (${playerId.slice(0, 8)})` : playerName;
+}
+
+function playerNameCounts(shots: Shot[]): Map<string, number> {
+  const namesById = new Map<string, string>();
+  for (const shot of shots) {
+    namesById.set(shot.shooterId, shot.shooterName);
+  }
+
+  const counts = new Map<string, number>();
+  for (const name of namesById.values()) {
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  return counts;
 }
 
 /** Creates preserve/trim insight candidates for one categorical breakdown. */
