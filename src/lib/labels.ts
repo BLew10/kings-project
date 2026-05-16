@@ -88,6 +88,15 @@ export function booleanFilterLabel(key: string, value: string): string {
   return value;
 }
 
+/** Formats NBA regulation periods as quarters and period 5+ as overtime. */
+export function formatPeriod(value: number | string): string {
+  const period = Number(value);
+  if (!Number.isFinite(period)) return titleize(String(value));
+  if (period >= 1 && period <= 4) return `Quarter ${period}`;
+  if (period === 5) return "Overtime 1";
+  return `Overtime ${period - 4}`;
+}
+
 /** Converts snake_case or camelCase fallback labels into title case. */
 function titleize(value: string): string {
   return value

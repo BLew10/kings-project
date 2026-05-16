@@ -8,20 +8,21 @@ type BarListProps = {
   formatKey?: (key: string) => string;
   maxRows?: number;
   description?: string;
+  embedded?: boolean;
 };
 
-export function BarList({ title, rows, formatKey = formatZone, maxRows, description }: BarListProps) {
+export function BarList({ title, rows, formatKey = formatZone, maxRows, description, embedded = false }: BarListProps) {
   const visible = typeof maxRows === "number" ? rows.slice(0, maxRows) : rows;
   const hiddenCount = rows.length - visible.length;
   const hiddenShare = hiddenCount > 0 ? rows.slice(visible.length).reduce((sum, r) => sum + r.share, 0) : 0;
 
-  return (
-    <Card className="flex flex-col">
-      <CardHeader>
+  const content = (
+    <>
+      <CardHeader className={embedded ? "px-0 pt-0" : undefined}>
         <CardTitle className="text-sm">{title}</CardTitle>
         {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
       </CardHeader>
-      <CardContent className="pt-0 space-y-3">
+      <CardContent className={embedded ? "space-y-3 px-0 pb-0 pt-0" : "pt-0 space-y-3"}>
         {visible.length === 0 ? (
           <p className="text-xs text-muted-foreground">No data for the current filter.</p>
         ) : (
@@ -56,6 +57,12 @@ export function BarList({ title, rows, formatKey = formatZone, maxRows, descript
           </>
         )}
       </CardContent>
-    </Card>
+    </>
   );
+
+  if (embedded) {
+    return <div className="flex flex-col">{content}</div>;
+  }
+
+  return <Card className="flex flex-col">{content}</Card>;
 }

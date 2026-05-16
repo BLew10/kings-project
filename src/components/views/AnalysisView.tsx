@@ -1,0 +1,102 @@
+import { Lightbulb } from "lucide-react";
+import { ActionPlanPrompt } from "@/components/ActionPlanPrompt";
+import { BreakdownFocus } from "@/components/BreakdownFocus";
+import { InsightSummary } from "@/components/InsightSummary";
+import { LineupBuilder } from "@/components/LineupBuilder";
+import { MetricGrid } from "@/components/MetricGrid";
+import { ShotCourt } from "@/components/ShotCourt";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { formatInsight } from "@/hooks/usePromptPlayerProfile";
+import type { FilterOptions } from "@/lib/promptBuilder";
+import type { BreakdownRow, Filters, MetricSummary, PlayerOption, Shot, RankedInsight } from "@/types/shots";
+import type { DashboardView } from "@/hooks/useDashboardComputations";
+
+type AnalysisViewProps = {
+  view: Exclude<DashboardView, "players">;
+  players: PlayerOption[];
+  lineup: string[];
+  onLineupChange: (next: string[]) => void;
+  activeShots: Shot[];
+  summary: MetricSummary;
+  teamSummary: MetricSummary;
+  breakdowns: {
+    zone: BreakdownRow[];
+    detail: BreakdownRow[];
+    context: BreakdownRow[];
+    clock: BreakdownRow[];
+    dribble: BreakdownRow[];
+    value: BreakdownRow[];
+    period: BreakdownRow[];
+  };
+  insights: string[];
+  rankedInsights: RankedInsight[];
+  playerFocused: boolean;
+  subject: string;
+  filters: Filters;
+  teamFilters: Filters;
+  filterOptions: FilterOptions;
+};
+
+export function AnalysisView({
+  view,
+  players,
+  lineup,
+  onLineupChange,
+  activeShots,
+  summary,
+  teamSummary,
+  breakdowns,
+  insights,
+  rankedInsights,
+  playerFocused,
+  subject,
+  filters,
+  teamFilters,
+  filterOptions,
+}: AnalysisViewProps) {
+  const showDelta = summary.attempts > 0 && (playerFocused || view === "lineup");
+  const lineupLabels = lineup.map((id) => players.find((player) => player.id === id)?.label ?? id);
+  const mode = view === "lineup" ? "lineup" : playerFocused ? "player" : "team";
+
+  return (
+    <>
+      {view === "lineup" ? (
+        <LineupBuilder players={players} selected={lineup} onChange={onLineupChange} />
+      ) : null}
+
+      <MetricGrid summary={summary} teamSummary={teamSummary} showDelta={showDelta} />
+
+      {summary.attempts > 0 ? (
+        <Alert variant={insights.length ? "info" : "default"}>
+          <Lightbulb />
+          <AlertDescription>
+            {insights.length
+              ? formatInsight(insights[0])
+              : "No major zone-level deviations above the sample-size threshold for the current filter. Adjust filters to surface stronger signals."}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <InsightSummary insights={rankedInsights} />
+
+      <section className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(320px,0.75fr)] xl:grid-cols-[minmax(0,0.85fr)_minmax(360px,0.65fr)]">
+        <ShotCourt shots={activeShots} />
+        <BreakdownFocus breakdowns={breakdowns} />
+      </section>
+
+      <ActionPlanPrompt
+        subject={subject}
+        mode={mode}
+        filters={view === "lineup" ? teamFilters : filters}
+        filterOptions={filterOptions}
+        summary={summary}
+        baselineSummary={teamSummary}
+        zoneRows={breakdowns.zone}
+        shotDetailRows={breakdowns.detail}
+        contextRows={breakdowns.context}
+        insights={insights.map(formatInsight)}
+        lineup={view === "lineup" ? lineupLabels : undefined}
+      />
+    </>
+  );
+}

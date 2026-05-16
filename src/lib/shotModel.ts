@@ -1,10 +1,10 @@
 import type { DribbleBucket, ShotClockBucket, ShotZone } from "../types/shots";
 
-const HOOP_X = -47;
-const HOOP_Y = 0;
+export const HOOP_X = -47;
+export const HOOP_Y = 0;
 const HALF_COURT_X = 0;
-const CORNER_ABS_Y = 22;
-const ABOVE_BREAK_DISTANCE = 23.75;
+export const CORNER_ABS_Y = 22;
+export const ABOVE_BREAK_DISTANCE = 23.75;
 // Where the straight corner-3 line intersects the 23'9" arc:
 // (x - HOOP_X)^2 + y^2 = 23.75^2, with |y| fixed at 22.
 const CORNER_END_X = HOOP_X + Math.sqrt(ABOVE_BREAK_DISTANCE ** 2 - CORNER_ABS_Y ** 2);
