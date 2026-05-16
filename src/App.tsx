@@ -3,6 +3,7 @@ import {
   BarChart3,
   Crown,
   Lightbulb,
+  LineChart,
   Target,
   TrendingUp,
   Users,
@@ -14,6 +15,7 @@ import type { FilterOptions } from "@/components/ActionPlanPrompt";
 import { BarList } from "@/components/BarList";
 import { ErrorState } from "@/components/ErrorState";
 import { FilterBar } from "@/components/filter-bar";
+import { InsightSummary } from "@/components/InsightSummary";
 import { LineupBuilder } from "@/components/LineupBuilder";
 import { MetricCard } from "@/components/MetricCard";
 import { PlayerTable } from "@/components/PlayerTable";
@@ -24,7 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { loadShots } from "@/lib/csv";
 import { labelFor } from "@/lib/labels";
-import { formatPercent, formatZone } from "@/lib/shotModel";
+import { formatPercent, formatPointsPerShot, formatZone } from "@/lib/shotModel";
 import {
   applyFilters,
   breakdownBy,
@@ -34,43 +36,48 @@ import {
   getPlayerRows,
   getPlayerZoneShares,
   getPlayers,
+  getRankedInsights,
   summarize,
 } from "@/lib/stats";
+import { filtersFromSearch, filtersToSearch } from "@/lib/urlState";
 import type { Filters as FilterState, Shot } from "@/types/shots";
 
 type View = "team" | "players" | "lineup";
 
 const SHOT_CLOCK_BUCKETS = ["early", "middle", "late", "end"];
 
+const DEFAULT_FILTERS: FilterState = {
+  player: [],
+  shotType: [],
+  complexShotType: [],
+  contestLevel: [],
+  assisted: "all",
+  catchAndShoot: "all",
+  shotClockBucket: [],
+  dateFrom: "",
+  dateTo: "",
+};
+
 function App() {
   const [shots, setShots] = useState<Shot[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<View>("team");
+  const [view, setView] = useState<View>(() => getInitialView());
   const [lineup, setLineup] = useState<string[]>([]);
   const [selectedPromptPlayer, setSelectedPromptPlayer] = useState<string | undefined>();
-  const [filters, setFilters] = useState<FilterState>({
-    player: [],
-    shotType: [],
-    complexShotType: [],
-    contestLevel: [],
-    assisted: "all",
-    catchAndShoot: "all",
-    shotClockBucket: [],
-    dateFrom: "",
-    dateTo: "",
-  });
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [loading, setLoading] = useState(true);
 
   const loadDashboard = useCallback(() => {
     loadShots()
       .then((data) => {
         const dates = data.map((s) => s.date).sort();
-        setShots(data);
-        setFilters((current) => ({
-          ...current,
+        const defaults = {
+          ...DEFAULT_FILTERS,
           dateFrom: dates[0] ?? "",
           dateTo: dates[dates.length - 1] ?? "",
-        }));
+        };
+        setShots(data);
+        setFilters(filtersFromSearch(window.location.search, defaults));
         // Seed lineup with the five highest-volume shooters so the Lineup view
         // shows something useful the first time it's opened.
         const topFive = getPlayerRows(data).slice(0, 5).map((row) => row.player);
@@ -86,12 +93,6 @@ function App() {
     loadDashboard();
   }, [loadDashboard]);
 
-  // TODO (you): implement retry. Decide:
-  //   - What state should you reset before re-fetching? (error, loading, shots, lineup?)
-  //   - Should you re-seed defaults (dateFrom/dateTo, top-5 lineup) on retry,
-  //     or has loadDashboard already done that for you?
-  //   - Do you need to guard against double-clicks while a retry is in flight?
-  // Starter version below — refine it if you want.
   const handleRetry = useCallback(() => {
     setError(null);
     setLoading(true);
@@ -125,6 +126,14 @@ function App() {
   const dates = useMemo(() => shots.map((s) => s.date).sort(), [shots]);
   const minDate = dates[0] ?? "";
   const maxDate = dates[dates.length - 1] ?? "";
+  const defaultFilters = useMemo(
+    () => ({
+      ...DEFAULT_FILTERS,
+      dateFrom: minDate,
+      dateTo: maxDate,
+    }),
+    [maxDate, minDate],
+  );
 
   const shotTypes = useMemo(() => getOptions(shots, (s) => s.shotType), [shots]);
   const complexShotTypes = useMemo(() => getOptions(shots, (s) => s.complexShotType), [shots]);
@@ -139,6 +148,16 @@ function App() {
     }),
     [complexShotTypes, contestLevels, players, shotTypes],
   );
+  const rankedInsights = useMemo(() => getRankedInsights(activeShots, teamShots), [activeShots, teamShots]);
+
+  useEffect(() => {
+    if (!shots.length) return;
+    const params = new URLSearchParams(filtersToSearch(filters, defaultFilters));
+    if (view !== "team") params.set("view", view);
+    const next = params.toString();
+    const nextUrl = `${window.location.pathname}${next ? `?${next}` : ""}${window.location.hash}`;
+    window.history.replaceState(null, "", nextUrl);
+  }, [defaultFilters, filters, shots.length, view]);
 
   const playerFocused = view === "team" && filters.player.length > 0;
   const promptPlayer =
@@ -289,7 +308,7 @@ function App() {
               <LineupBuilder players={players} selected={lineup} onChange={setLineup} />
             ) : null}
 
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               <MetricCard
                 label="Attempts"
                 value={summary.attempts.toLocaleString()}
@@ -308,6 +327,21 @@ function App() {
                     ? {
                         value: `${(Math.abs(fgDelta) * 100).toFixed(1)} pts`,
                         positive: fgDelta >= 0,
+                      }
+                    : undefined
+                }
+              />
+              <MetricCard
+                label="Points / Shot"
+                value={formatPointsPerShot(summary.pointsPerShot)}
+                detail={`Team baseline: ${formatPointsPerShot(teamSummary.pointsPerShot)}`}
+                icon={LineChart}
+                tone={summary.pointsPerShot >= teamSummary.pointsPerShot ? "success" : "warning"}
+                delta={
+                  showDelta
+                    ? {
+                        value: `${Math.abs(summary.pointsPerShot - teamSummary.pointsPerShot).toFixed(2)} PPS`,
+                        positive: summary.pointsPerShot >= teamSummary.pointsPerShot,
                       }
                     : undefined
                 }
@@ -338,6 +372,8 @@ function App() {
                 </AlertDescription>
               </Alert>
             ) : null}
+
+            <InsightSummary insights={rankedInsights} />
 
             <section className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
               <ShotCourt shots={activeShots} />
@@ -398,11 +434,13 @@ function App() {
   );
 }
 
+/** Converts raw insight flag strings into display labels with formatted zones. */
 function formatInsight(insight: string): string {
   const [zone, ...rest] = insight.split(":");
   return `${formatZone(zone)}: ${rest.join(":").trim()}`;
 }
 
+/** Renders legacy zone-deviation notes as a compact supporting recommendation list. */
 function RecommendationCard({ insights, attempts }: { insights: string[]; attempts: number }) {
   return (
     <Card>
@@ -440,3 +478,9 @@ function RecommendationCard({ insights, attempts }: { insights: string[]; attemp
 }
 
 export default App;
+
+/** Reads the initial dashboard tab from the URL query string. */
+function getInitialView(): View {
+  const value = new URLSearchParams(window.location.search).get("view");
+  return value === "players" || value === "lineup" ? value : "team";
+}

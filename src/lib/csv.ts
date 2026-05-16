@@ -3,11 +3,13 @@ import {
   getDribbleBucket,
   getShotClockBucket,
   getShotDistance,
+  getShotValue,
   getShotZone,
 } from "./shotModel";
 
 type RawRow = Record<string, string>;
 
+/** Loads and parses the static shot CSV from the public asset path. */
 export async function loadShots(): Promise<Shot[]> {
   const response = await fetch("/data/shots.csv");
   if (!response.ok) {
@@ -18,6 +20,7 @@ export async function loadShots(): Promise<Shot[]> {
   return parseShotCsv(text);
 }
 
+/** Parses the project shot CSV into typed rows with derived zones, distance, value, and filter buckets. */
 export function parseShotCsv(text: string): Shot[] {
   const [headerLine, ...lines] = text.trim().split(/\r?\n/);
   const headers = parseCsvLine(headerLine);
@@ -33,6 +36,7 @@ export function parseShotCsv(text: string): Shot[] {
       const y = toNumber(raw.y);
       const dribblesBefore = toNumber(raw.dribbles_before);
       const shotClock = toNumber(raw.shot_clock);
+      const zone = getShotZone(x, y);
 
       return {
         shooterId: raw.shooter_id,
@@ -60,14 +64,16 @@ export function parseShotCsv(text: string): Shot[] {
         contestLevel: raw.contest_level as Shot["contestLevel"],
         catchAndShoot: toBool(raw.catch_and_shoot),
         dribblesBefore,
-        zone: getShotZone(x, y),
+        zone,
         distance: getShotDistance(x, y),
+        shotValue: getShotValue(zone),
         shotClockBucket: getShotClockBucket(shotClock),
         dribbleBucket: getDribbleBucket(dribblesBefore),
       };
     });
 }
 
+/** Splits one CSV record while respecting quoted cells and escaped quotes. */
 function parseCsvLine(line: string): string[] {
   const cells: string[] = [];
   let current = "";
@@ -94,14 +100,17 @@ function parseCsvLine(line: string): string[] {
   return cells;
 }
 
+/** Converts a trusted numeric CSV cell into a number. */
 function toNumber(value: string): number {
   return Number(value);
 }
 
+/** Converts the dataset's uppercase boolean strings into booleans. */
 function toBool(value: string): boolean {
   return value === "TRUE";
 }
 
+/** Builds an ISO date string from separate year, month, and day CSV cells. */
 function toDate(year: string, month: string, day: string): string {
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }

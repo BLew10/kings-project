@@ -1,5 +1,5 @@
 import type { BreakdownRow } from "@/types/shots";
-import { formatZone } from "@/lib/shotModel";
+import { formatPointsPerShot, formatZone } from "@/lib/shotModel";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const ZONE_ORDER: Array<{ key: string; color: string; label: string }> = [
@@ -23,6 +23,7 @@ export function ZoneSparkline({ rows, className }: ZoneSparklineProps) {
     ...z,
     share: byKey.get(z.key)?.share ?? 0,
     fgPct: byKey.get(z.key)?.fgPct ?? 0,
+    pointsPerShot: byKey.get(z.key)?.pointsPerShot ?? 0,
     attempts: byKey.get(z.key)?.attempts ?? 0,
   })).filter((s) => s.share > 0);
 
@@ -55,7 +56,7 @@ export function ZoneSparkline({ rows, className }: ZoneSparklineProps) {
               <span className="size-2 rounded-sm shrink-0" style={{ backgroundColor: s.color }} />
               <span className="flex-1 text-foreground">{formatZone(s.key)}</span>
               <span className="tabular-nums text-muted-foreground">
-                {(s.share * 100).toFixed(1)}% · {(s.fgPct * 100).toFixed(1)}% FG
+                {(s.share * 100).toFixed(1)}% · {formatPointsPerShot(s.pointsPerShot)} PPS · {(s.fgPct * 100).toFixed(1)}% FG
               </span>
             </div>
           ))}

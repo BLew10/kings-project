@@ -1,3 +1,4 @@
+/** Returns a human-friendly label for raw dataset and derived category values. */
 export function labelFor(value: string): string {
   const labels: Record<string, string> = {
     all: "All",
@@ -42,6 +43,7 @@ export function labelFor(value: string): string {
   return labels[value] ?? titleize(value);
 }
 
+/** Returns a human-friendly label for dashboard filter keys. */
 export function filterLabel(key: string): string {
   const labels: Record<string, string> = {
     player: "Player",
@@ -58,12 +60,14 @@ export function filterLabel(key: string): string {
   return labels[key] ?? titleize(key);
 }
 
+/** Returns display labels for scalar boolean-style filters. */
 export function booleanFilterLabel(key: string, value: string): string {
   if (key === "assisted") return value === "true" ? "Assisted" : "Self-Created";
   if (key === "catchAndShoot") return value === "true" ? "Catch and Shoot" : "Off the Dribble";
   return value;
 }
 
+/** Converts snake_case or camelCase fallback labels into title case. */
 function titleize(value: string): string {
   return value
     .replace(/_/g, " ")

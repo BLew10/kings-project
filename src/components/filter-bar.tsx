@@ -244,6 +244,7 @@ export function FilterBar({
   );
 }
 
+/** Renders a compact popover-based multi-select filter. */
 function MultiSelect({
   value,
   options,
@@ -307,12 +308,14 @@ function MultiSelect({
   );
 }
 
+/** Formats active chip text for multi-select values without letting long lists dominate the toolbar. */
 function formatSelection(values: string[], formatValue: (value: string) => string): string {
   const formatted = values.map(formatValue);
   if (formatted.length <= 2) return formatted.join(", ");
   return `${formatted.slice(0, 2).join(", ")} +${formatted.length - 2}`;
 }
 
+/** Provides consistent label and spacing for one filter control. */
 function FilterField({
   label,
   icon,
@@ -333,6 +336,7 @@ function FilterField({
   );
 }
 
+/** Renders mutually exclusive scalar filter options as a segmented control. */
 function SegmentedField({
   label,
   value,

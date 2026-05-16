@@ -13,6 +13,7 @@ type LineupBuilderProps = {
 export function LineupBuilder({ players, selected, onChange }: LineupBuilderProps) {
   const lineupFull = selected.length >= 5;
 
+  /** Toggles one player while enforcing the five-player lineup cap. */
   const togglePlayer = (player: string) => {
     if (selected.includes(player)) {
       onChange(selected.filter((item) => item !== player));

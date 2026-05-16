@@ -30,6 +30,7 @@ export type Shot = {
   dribblesBefore: number;
   zone: ShotZone;
   distance: number;
+  shotValue: 2 | 3;
   shotClockBucket: ShotClockBucket;
   dribbleBucket: DribbleBucket;
 };
@@ -61,7 +62,9 @@ export type Filters = {
 export type MetricSummary = {
   attempts: number;
   makes: number;
+  points: number;
   fgPct: number;
+  pointsPerShot: number;
   assistedPct: number;
   catchShootPct: number;
   blockedPct: number;
@@ -74,6 +77,18 @@ export type BreakdownRow = {
   key: string;
   attempts: number;
   makes: number;
+  points: number;
   fgPct: number;
+  pointsPerShot: number;
   share: number;
+};
+
+export type InsightPriority = "preserve" | "trim" | "role" | "caveat";
+
+export type RankedInsight = {
+  id: string;
+  priority: InsightPriority;
+  title: string;
+  detail: string;
+  attempts: number;
 };

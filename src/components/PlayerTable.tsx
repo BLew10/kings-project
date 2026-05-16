@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight } from "lucide-react";
 import { ShotCourt } from "@/components/ShotCourt";
-import { formatPercent } from "@/lib/shotModel";
+import { formatPercent, formatPointsPerShot } from "@/lib/shotModel";
 import { cn } from "@/lib/utils";
 import type { BreakdownRow, MetricSummary, Shot } from "@/types/shots";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -23,13 +23,14 @@ type PlayerTableProps = {
   description?: string;
 };
 
-type SortKey = "player" | "attempts" | "fgPct" | "assistedPct" | "catchShootPct" | "avgDribbles";
+type SortKey = "player" | "attempts" | "fgPct" | "pointsPerShot" | "assistedPct" | "catchShootPct" | "avgDribbles";
 type SortDir = "asc" | "desc";
 
 const COLUMNS: Array<{ key: SortKey; label: string; align: "left" | "right" }> = [
   { key: "player", label: "Player", align: "left" },
   { key: "attempts", label: "Attempts", align: "right" },
   { key: "fgPct", label: "FG%", align: "right" },
+  { key: "pointsPerShot", label: "PPS", align: "right" },
   { key: "assistedPct", label: "Assisted%", align: "right" },
   { key: "catchShootPct", label: "C&S%", align: "right" },
   { key: "avgDribbles", label: "Avg Dribbles", align: "right" },
@@ -143,6 +144,7 @@ export function PlayerTable({
                         </td>
                         <td className="px-4 py-1.5 text-right tabular-nums">{row.attempts.toLocaleString()}</td>
                         <td className="px-4 py-1.5 text-right tabular-nums">{formatPercent(row.fgPct)}</td>
+                        <td className="px-4 py-1.5 text-right tabular-nums">{formatPointsPerShot(row.pointsPerShot)}</td>
                         <td className="px-4 py-1.5 text-right tabular-nums">{formatPercent(row.assistedPct)}</td>
                         <td className="px-4 py-1.5 text-right tabular-nums">{formatPercent(row.catchShootPct)}</td>
                         <td className="px-4 py-1.5 text-right tabular-nums">{row.avgDribbles.toFixed(1)}</td>
@@ -197,11 +199,13 @@ export function PlayerTable({
   );
 }
 
+/** Renders the current sort direction indicator for a table header. */
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
   if (!active) return <ArrowUpDown className="size-3 opacity-40" />;
   return dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />;
 }
 
+/** Creates compact initials for anonymized player names. */
 function initials(name: string): string {
   return name
     .split(/\s+/)

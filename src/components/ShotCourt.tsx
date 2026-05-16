@@ -18,7 +18,7 @@ const COURT = {
   height: 500,
 };
 
-// Color stops: rose → amber → emerald (cool to warm by FG%)
+/** Maps field-goal efficiency and volume intensity to a heatmap fill color. */
 function fillFor(makeRate: number, intensity: number) {
   let base: string;
   if (makeRate >= 0.5) base = "16, 185, 129"; // emerald-500
@@ -38,6 +38,7 @@ export function ShotCourt({
   const [hovered, setHovered] = useState<{
     attempts: number;
     makes: number;
+    points: number;
     anchorX: number;
     anchorY: number;
   } | null>(null);
@@ -106,6 +107,7 @@ export function ShotCourt({
                       setHovered({
                         attempts: bin.attempts,
                         makes: bin.makes,
+                        points: bin.points,
                         anchorX: cellRect.left - wrapperRect.left + cellRect.width / 2,
                         anchorY: cellRect.top - wrapperRect.top,
                       });
@@ -125,7 +127,7 @@ export function ShotCourt({
                   transform: "translate(-50%, calc(-100% - 6px))",
                 }}
               >
-                {hovered.attempts} attempts · {((hovered.makes / hovered.attempts) * 100).toFixed(1)}% FG
+                {hovered.attempts} attempts · {(hovered.points / hovered.attempts).toFixed(2)} PPS · {((hovered.makes / hovered.attempts) * 100).toFixed(1)}% FG
               </div>
             ) : null}
           </div>
@@ -151,6 +153,7 @@ export function ShotCourt({
   );
 }
 
+/** Renders one color swatch for the court heatmap legend. */
 function LegendSwatch({ color, label }: { color: string; label: string }) {
   return (
     <span className="inline-flex items-center gap-1.5">
@@ -160,21 +163,24 @@ function LegendSwatch({ color, label }: { color: string; label: string }) {
   );
 }
 
+/** Converts data coordinates to SVG viewport coordinates. */
 function toCourtPoint(x: number, y: number) {
   const courtX = ((x - COURT.minX) / (COURT.maxX - COURT.minX)) * COURT.width;
   const courtY = 250 - (y / (COURT.maxY - COURT.minY)) * COURT.height;
   return { x: courtX, y: courtY };
 }
 
+/** Groups nearby shot attempts into rendered heatmap cells. */
 function getBins(shots: Shot[]) {
-  const groups = new Map<string, { x: number; y: number; attempts: number; makes: number }>();
+  const groups = new Map<string, { x: number; y: number; attempts: number; makes: number; points: number }>();
   for (const shot of shots) {
     const x = Math.round(shot.x / 3) * 3;
     const y = Math.round(shot.y / 3) * 3;
     const key = `${x}:${y}`;
-    const existing = groups.get(key) ?? { x, y, attempts: 0, makes: 0 };
+    const existing = groups.get(key) ?? { x, y, attempts: 0, makes: 0, points: 0 };
     existing.attempts += 1;
     existing.makes += shot.outcome ? 1 : 0;
+    existing.points += shot.outcome ? shot.shotValue : 0;
     groups.set(key, existing);
   }
   return [...groups.values()].filter((bin) => bin.attempts >= 5);

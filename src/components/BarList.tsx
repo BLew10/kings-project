@@ -1,4 +1,4 @@
-import { formatPercent, formatZone } from "@/lib/shotModel";
+import { formatPercent, formatPointsPerShot, formatZone } from "@/lib/shotModel";
 import type { BreakdownRow } from "@/types/shots";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
@@ -36,7 +36,7 @@ export function BarList({ title, rows, formatKey = formatZone, maxRows, descript
                   <div className="flex items-baseline justify-between gap-2 text-sm">
                     <span className="font-medium truncate">{formatKey(row.key)}</span>
                     <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-                      {sharePct.toFixed(1)}% · {row.attempts.toLocaleString()} att · {formatPercent(row.fgPct)} FG
+                      {sharePct.toFixed(1)}% · {row.attempts.toLocaleString()} att · {formatPointsPerShot(row.pointsPerShot)} PPS · {formatPercent(row.fgPct)} FG
                     </span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-muted overflow-hidden">

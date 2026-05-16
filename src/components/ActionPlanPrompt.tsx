@@ -1,7 +1,7 @@
 import { Check, Clipboard, WandSparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { booleanFilterLabel, filterLabel, labelFor } from "@/lib/labels";
-import { formatPercent, formatZone } from "@/lib/shotModel";
+import { formatPercent, formatPointsPerShot, formatZone } from "@/lib/shotModel";
 import type { BreakdownRow, Filters, MetricSummary } from "@/types/shots";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -112,6 +112,7 @@ export function ActionPlanPrompt({
   );
 }
 
+/** Builds a self-contained coaching prompt from the currently visible dashboard profile. */
 function buildPrompt({
   subject,
   mode,
@@ -134,8 +135,8 @@ function buildPrompt({
   const fgDelta = summary.fgPct - baselineSummary.fgPct;
   const baselineLine =
     mode === "team"
-      ? `Team baseline FG%: ${formatPercent(baselineSummary.fgPct)}.`
-      : `Team baseline FG% under the same non-player filters: ${formatPercent(baselineSummary.fgPct)} (${formatSignedPoints(fgDelta)} vs baseline).`;
+      ? `Team baseline: ${formatPercent(baselineSummary.fgPct)} FG, ${formatPointsPerShot(baselineSummary.pointsPerShot)} PPS.`
+      : `Team baseline under the same non-player filters: ${formatPercent(baselineSummary.fgPct)} FG, ${formatPointsPerShot(baselineSummary.pointsPerShot)} PPS (${formatSignedPoints(fgDelta)} FG vs baseline).`;
 
   return [
     "You are an NBA coaching and basketball analytics assistant.",
@@ -156,7 +157,9 @@ function buildPrompt({
     "Summary metrics:",
     `- Attempts: ${summary.attempts.toLocaleString()}`,
     `- Makes: ${summary.makes.toLocaleString()}`,
+    `- Points: ${summary.points.toLocaleString()}`,
     `- FG%: ${formatPercent(summary.fgPct)}`,
+    `- Points per shot: ${formatPointsPerShot(summary.pointsPerShot)}`,
     `- Assisted rate: ${formatPercent(summary.assistedPct)}`,
     `- Catch-and-shoot rate: ${formatPercent(summary.catchShootPct)}`,
     `- Average dribbles before shot: ${summary.avgDribbles.toFixed(1)}`,
@@ -183,17 +186,19 @@ function buildPrompt({
     .join("\n");
 }
 
+/** Formats breakdown rows for the copy-ready AI prompt. */
 function formatRows(rows: BreakdownRow[], formatKey: (key: string) => string): string {
   if (!rows.length) return "- No data for the current filters.";
   return rows
     .slice(0, 7)
     .map(
       (row) =>
-        `- ${formatKey(row.key)}: ${row.attempts.toLocaleString()} attempts, ${formatPercent(row.fgPct)} FG, ${(row.share * 100).toFixed(1)}% of attempts`,
+        `- ${formatKey(row.key)}: ${row.attempts.toLocaleString()} attempts, ${formatPointsPerShot(row.pointsPerShot)} PPS, ${formatPercent(row.fgPct)} FG, ${(row.share * 100).toFixed(1)}% of attempts`,
     )
     .join("\n");
 }
 
+/** Formats the active filter state for the copy-ready AI prompt. */
 function formatFilters(filters: Filters, filterOptions: FilterOptions): string {
   const formatted = [
     `- ${filterLabel("player")}: ${formatMultiFilter(filters.player, filterOptions.players, (value) => value)}`,
@@ -209,6 +214,7 @@ function formatFilters(filters: Filters, filterOptions: FilterOptions): string {
   return formatted.join("\n");
 }
 
+/** Formats multi-select filter values, expanding empty selections to the available option set. */
 function formatMultiFilter(
   selected: string[],
   allOptions: string[],
@@ -219,12 +225,14 @@ function formatMultiFilter(
   return `All (${allOptions.map(formatOption).join(", ")})`;
 }
 
+/** Formats one scalar filter value for prompt context. */
 function formatBooleanFilter(key: "assisted" | "catchAndShoot", value: string): string {
   if (value !== "all") return booleanFilterLabel(key, value);
   if (key === "assisted") return "All (Assisted, Self-Created)";
   return "All (Catch and Shoot, Off the Dribble)";
 }
 
+/** Formats a decimal-rate delta as percentage points with an explicit sign. */
 function formatSignedPoints(value: number): string {
   const points = `${(Math.abs(value) * 100).toFixed(1)} pts`;
   if (value > 0) return `+${points}`;
@@ -232,6 +240,7 @@ function formatSignedPoints(value: number): string {
   return "0.0 pts";
 }
 
+/** Copies text through a temporary textarea when the Clipboard API is unavailable. */
 function fallbackCopy(value: string) {
   const textarea = document.createElement("textarea");
   textarea.value = value;
