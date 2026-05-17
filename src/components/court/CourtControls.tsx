@@ -1,10 +1,12 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 type CourtControlsProps = {
   hideLowSampleCells: boolean;
   minAttempts: number;
   onToggleHide: () => void;
   onMinAttemptsChange: (value: number) => void;
+  stacked?: boolean;
 };
 
 export function CourtControls({
@@ -12,6 +14,7 @@ export function CourtControls({
   minAttempts,
   onToggleHide,
   onMinAttemptsChange,
+  stacked = false,
 }: CourtControlsProps) {
   const handleMinAttempts = (event: React.ChangeEvent<HTMLInputElement>) => {
     const next = Number(event.target.value);
@@ -20,7 +23,14 @@ export function CourtControls({
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 text-xs text-muted-foreground">
+      <div
+        className={cn(
+          "flex shrink-0 gap-2 text-xs text-muted-foreground",
+          stacked
+            ? "flex-col items-start"
+            : "flex-wrap items-center justify-end",
+        )}
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <button

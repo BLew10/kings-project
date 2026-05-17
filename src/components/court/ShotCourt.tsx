@@ -36,7 +36,13 @@ export function ShotCourt({
 
   const content = (
     <>
-      <CardHeader className="flex-row items-start justify-between gap-3">
+      <CardHeader
+        className={
+          embedded
+            ? "gap-3"
+            : "flex-row items-start justify-between gap-3"
+        }
+      >
         <div>
           <CardTitle>{title}</CardTitle>
           <CardDescription>
@@ -49,6 +55,7 @@ export function ShotCourt({
           minAttempts={minAttempts}
           onToggleHide={toggleHideLowSample}
           onMinAttemptsChange={setMinAttempts}
+          stacked={embedded}
         />
       </CardHeader>
       <CardContent className="pt-0 flex-1">
