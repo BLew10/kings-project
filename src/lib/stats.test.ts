@@ -136,4 +136,15 @@ describe("summarize", () => {
     expect(result.points).toBe(5);
     expect(result.pointsPerShot).toBeCloseTo(5 / 3, 4);
   });
+
+  it("averages pass distance only for assisted shots and assist opportunities", () => {
+    const shots = [
+      makeShot({ x: 0, y: 0, passerX: 3, passerY: 4, assisted: true }),
+      makeShot({ x: 0, y: 0, passerX: 0, passerY: 12, assistOpportunity: true }),
+      makeShot({ x: 0, y: 0, passerX: 30, passerY: 40, assisted: false, assistOpportunity: false }),
+      makeShot({ x: 0, y: 0, passerX: null, passerY: null, assisted: true }),
+    ];
+    const result = summarize(shots);
+    expect(result.avgPassDistance).toBeCloseTo(8.5, 4);
+  });
 });

@@ -54,7 +54,7 @@ export function summarize(shots: Shot[]): MetricSummary {
     avgShotDuration: averageFinite(shots.map((shot) => shot.startGameClock - shot.endGameClock)),
     avgPassDistance: averageFinite(
       shots.map((shot) =>
-        shot.passerX === null || shot.passerY === null
+        (!shot.assisted && !shot.assistOpportunity) || shot.passerX === null || shot.passerY === null
           ? Number.NaN
           : Math.hypot(shot.x - shot.passerX, shot.y - shot.passerY),
       ),
@@ -189,4 +189,3 @@ function playerNameCounts(shots: Shot[]): Map<string, number> {
   }
   return counts;
 }
-

@@ -11,7 +11,14 @@ export const COURT = {
 } as const;
 
 export type CourtPoint = { x: number; y: number };
-export type CourtBin = { x: number; y: number; attempts: number; makes: number; points: number };
+export type CourtBin = {
+  x: number;
+  y: number;
+  attempts: number;
+  makes: number;
+  points: number;
+  marker?: "backcourt";
+};
 
 /** Converts data coordinates to SVG viewport coordinates. */
 export function toCourtPoint(x: number, y: number): CourtPoint {
@@ -77,11 +84,19 @@ export function getBins(shots: Shot[]): CourtBin[] {
   const groups = new Map<string, CourtBin>();
   for (const shot of shots) {
     if (!Number.isFinite(shot.x) || !Number.isFinite(shot.y)) continue;
-    if (!isInsideHalfCourtView(shot.x, shot.y)) continue;
-    const x = Math.round(shot.x / 3) * 3;
-    const y = Math.round(shot.y / 3) * 3;
-    const key = `${x}:${y}`;
-    const existing = groups.get(key) ?? { x, y, attempts: 0, makes: 0, points: 0 };
+    const isBackcourt = shot.zone === "backcourt";
+    if (!isBackcourt && !isInsideHalfCourtView(shot.x, shot.y)) continue;
+    const x = isBackcourt ? COURT.maxX - 2 : Math.round(shot.x / 3) * 3;
+    const y = isBackcourt ? 0 : Math.round(shot.y / 3) * 3;
+    const key = isBackcourt ? "backcourt" : `${x}:${y}`;
+    const existing = groups.get(key) ?? {
+      x,
+      y,
+      attempts: 0,
+      makes: 0,
+      points: 0,
+      marker: isBackcourt ? "backcourt" : undefined,
+    };
     existing.attempts += 1;
     existing.makes += shot.outcome ? 1 : 0;
     existing.points += shot.outcome ? shot.shotValue : 0;

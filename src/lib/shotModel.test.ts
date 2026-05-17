@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatZoneWithRange,
   getDribbleBucket,
   getShotClockBucket,
   getShotValue,
@@ -41,6 +42,14 @@ describe("getShotValue", () => {
   it("returns 3 points for above-break and corner threes", () => {
     expect(getShotValue(-22, 0)).toBe(3);
     expect(getShotValue(-44, 22)).toBe(3);
+  });
+});
+
+describe("formatZoneWithRange", () => {
+  it("adds distance definitions to zone labels", () => {
+    expect(formatZoneWithRange("rim")).toBe("Rim (0-4 ft)");
+    expect(formatZoneWithRange("above_break_three")).toBe("Above-Break 3 (23.75+ ft)");
+    expect(formatZoneWithRange("backcourt")).toBe("Backcourt Heave (beyond half court)");
   });
 });
 

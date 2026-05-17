@@ -15,6 +15,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useFilterChips, type FilterChip } from "@/hooks/useFilterChips";
 import { DEFAULT_FILTERS, DRIBBLE_BUCKETS, PERIODS, SHOT_CLOCK_BUCKETS, SHOT_VALUES, SHOT_ZONES } from "@/lib/filterSchema";
 import { formatPeriod, labelFor } from "@/lib/labels";
+import { formatZoneWithRange } from "@/lib/shotModel";
 import { cn } from "@/lib/utils";
 import type { ContestLevel, ShotType } from "@/types/shots";
 import type { Filters } from "@/types/filters";
@@ -130,7 +131,7 @@ export function FilterBar({
           <FilterField label="Zone" tooltip={FILTER_TOOLTIPS.zone}>
             <MultiSelect
               value={filters.zone}
-              options={SHOT_ZONES.map((zone) => ({ value: zone, label: labelFor(zone) }))}
+              options={SHOT_ZONES.map((zone) => ({ value: zone, label: formatZoneWithRange(zone) }))}
               allLabel="Any zone"
               onChange={(value) => update("zone", value)}
             />

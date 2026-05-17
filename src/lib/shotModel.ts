@@ -81,6 +81,20 @@ export function formatZone(zone: ShotZone | string): string {
   return labels[zone] ?? zone;
 }
 
+/** Formats shot zones with the distance rules used to derive them. */
+export function formatZoneWithRange(zone: ShotZone | string): string {
+  const labels: Record<string, string> = {
+    rim: "Rim (0-4 ft)",
+    paint: "Paint (4-8 ft)",
+    short_midrange: "Short Midrange (8-16 ft)",
+    long_midrange: "Long Midrange (16 ft-arc)",
+    corner_three: "Corner 3 (sideline 22+ ft)",
+    above_break_three: "Above-Break 3 (23.75+ ft)",
+    backcourt: "Backcourt Heave (beyond half court)",
+  };
+  return labels[zone] ?? formatZone(zone);
+}
+
 /** Formats a decimal rate as a one-decimal percentage. */
 export function formatPercent(value: number): string {
   if (!Number.isFinite(value)) return "0.0%";
