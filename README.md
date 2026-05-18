@@ -2,7 +2,10 @@
 
 A frontend-only dashboard for exploring anonymized 2024-25 NBA shot attempt data for 12 players, treated as one assumed team per the project instructions. The focus is a polished analytical experience: clear component boundaries, fast filtering, and basketball workflows that a coach or analyst could actually use.
 
+The first thing I did with this project was the same thing I do with any ticket: read the requirements, look at what data I had, and decide what was answerable directly versus what needed to be derived or scoped around. The CSV has location and outcome but no opponent, score, defender, or 2PT/3PT flag, so a chunk of the engineering work below is about squeezing more signal out of the fields that _are_ there (zone, shot value, shot-clock and dribble buckets) and being explicit about what isn't.
+
 **Live demo:** [kings-project-three.vercel.app](https://kings-project-three.vercel.app/)
+
 **Walkthrough video:** [loom.com/share/7369b4912a8d4469836378e60e9f0ee2](https://www.loom.com/share/7369b4912a8d4469836378e60e9f0ee2)
 
 ## How The Dashboard Answers The Project Questions
@@ -34,24 +37,15 @@ The brief lists five possible questions the dashboard can help answer. This subm
 - Vitest for the pure data layer
 - No backend, no database
 
-The dataset is small, clean, and static, so the real problem is data transformation, interaction design, and clear presentation. Vite starts in milliseconds and produces a static build. React + TypeScript gives a familiar component model and compile-time contracts around shot rows, filters, and aggregates. Tailwind keeps layout decisions next to the component that owns them. Radix shows up only where accessibility and interaction details matter (selects, popovers, tabs, tooltips). The visual system stays restrained: Kings purple for identity, basketball-friendly red/amber/green for efficiency, so the heatmap can encode both performance and volume without a legend dump.
-
 ## Dashboard Features
 
 The dashboard has three tabs, each answering a distinct question from the brief.
 
-- **Team** — *What does the team (or one player) look like, spatially?* Full shot profile for the assumed team: KPIs, half-court heatmap, zone breakdown, shot-detail mix, and a copy-ready AI action-plan prompt. Filter to a player to see their profile against the team baseline (the FG% card surfaces the delta).
-- **Players** — *Which players are taking which types of shots?* Side-by-side comparison table for all twelve players with a per-row zone-mix sparkline. Click a row to expand the player's location heatmap and generate an action-plan prompt for that player.
-- **Lineup** — *What does this combination of five players look like?* Compact lineup picker (defaults to top-5-by-attempts) plus the same shot profile components as Team. All Team filters carry over.
+- **Team**: _What does the team (or one player) look like, spatially?_ Full shot profile for the assumed team: KPIs, half-court heatmap, zone breakdown, shot-detail mix, and a copy-ready AI action-plan prompt. Filter to a player to see their profile against the team baseline (the FG% card surfaces the delta).
+- **Players**: _Which players are taking which types of shots?_ Side-by-side comparison table for all twelve players with a per-row zone-mix sparkline. Click a row to expand the player's location heatmap and generate an action-plan prompt for that player.
+- **Lineup**: _What does this combination of five players look like?_ Compact lineup picker (defaults to top-5-by-attempts) plus the same shot profile components as Team. All Team filters carry over.
 
 A single sticky filter bar drives everything: player, shot type, shot detail, contest level, date range with presets, creation (assisted / self-created), touch type (catch-and-shoot / off-dribble), and shot-clock bucket. The dropdown filters support multi-select, active filters render as removable chips, and "Reset all" restores the full dataset. Tab and filter state serialize to the URL, so any analytical slice is a shareable link.
-
-Other things worth pointing out:
-
-- KPI cards for attempts, FG%, assisted rate, catch-and-shoot rate, average dribbles, and average shot clock.
-- Derived shot value and points per shot, with PPS deltas against the current team baseline.
-- Zone, shot-detail, and contest-context breakdowns with volume share, PPS, and FG%.
-- Coaching notes derived from transparent zone-delta and sample-size thresholds, not a black-box model.
 
 ## Assumptions
 
@@ -80,8 +74,8 @@ This is deterministic and grounded in official NBA dimensions, but it is still d
 
 Sources I used for the math:
 
-- [NBA Official Rulebook, Rule No. 1: Court Dimensions](https://official.nba.com/rulebook/) — the three-point area is defined by sideline-parallel lines 3 feet from the sidelines and a 23'9" arc from the middle of the basket.
-- [Official 2025-26 NBA Playing Rules PDF](https://cdn.nba.com/manage/2026/01/Official-2025-26-NBA-Playing-Rules.pdf) — the court diagram shows the 22-foot corner distance and 23'9" above-break arc; Rule No. 5 defines successful field goals outside the line as 3 points, on/inside as 2.
+- [NBA Official Rulebook, Rule No. 1: Court Dimensions](https://official.nba.com/rulebook/). The three-point area is defined by sideline-parallel lines 3 feet from the sidelines and a 23'9" arc from the middle of the basket.
+- [Official 2025-26 NBA Playing Rules PDF](https://cdn.nba.com/manage/2026/01/Official-2025-26-NBA-Playing-Rules.pdf). The court diagram shows the 22-foot corner distance and 23'9" above-break arc; Rule No. 5 defines successful field goals outside the line as 3 points, on/inside as 2.
 
 ## Tradeoffs
 
@@ -97,7 +91,9 @@ Custom SVG court over a charting library. The maintained D3 court packages don't
 
 Manual CSV parsing over Papa Parse. The input is known and well-structured, so ~40 lines of code with fail-fast validation is enough. For user-uploaded or messy CSVs, Papa Parse would be safer.
 
-Local React state over a global store. One consumer of the data, a shallow component tree, and props that travel one or two levels — a store would have added vocabulary without solving a problem.
+Defensive bucketing for derived fields. Shot-clock and dribble buckets both include an explicit `unknown` value, and any non-finite or out-of-range input falls into it (covered by tests in `src/lib/shotModel.test.ts`). The CSV here is clean, but in a real pipeline this data comes from a third party and integrity isn't guaranteed. Allocating bad or missing values to a labeled bucket is better than silently dropping them or letting them poison an aggregate.
+
+Local React state over a global store. There's one consumer of the data, a shallow component tree, and props that travel one or two levels at most. A store would have added vocabulary without solving a problem.
 
 Derived shot value instead of official scoring metadata. The dictionary has no 2PT/3PT flag, so PPS comes from the coordinate-based zone model and official three-point geometry. Better than FG% alone, but a production version would validate against play-by-play.
 
@@ -134,16 +130,37 @@ Vitest covers the pure data layer: CSV parsing, zone classification and shot-val
 
 For typechecking, run `npm run typecheck` (which runs `tsc -b`). The root `tsc --noEmit` shortcut is a no-op because the root tsconfig uses `files: []`, so the project-references invocation is the one to use before pushing or in CI.
 
-## How I'd Extend This For Larger Data
+## How I'd Extend This With More Time
 
-With richer data, this moves from descriptive shot profiling toward coaching and roster decision-support:
+With more time on this codebase, the work splits into engineering and the underlying analytics. The analytics layer is already plain functions of `(shots, filters)`, so most of the engineering changes below are substitutions, not rewrites.
 
-- Player and ball tracking (SportVU / Second Spectrum-style) to replace broad contest buckets with true defender distance, closeout angle, shooter movement, pass quality, and off-ball action context.
-- Defender identity and matchup context, so "heavily contested" is evaluated differently based on who contested, their size and role, and the coverage that produced the attempt.
+**Backend + API.** Move raw events into Postgres, expose `/summary`, `/breakdown`, `/players`, `/lineup`, and `/insights` endpoints, and cache the common rollups. The frontend keeps its memoized hooks as a thin client cache. The CSV ingest path (`src/lib/csv.ts` + the helpers in `shotModel.ts`) is the single seam that swaps for an API client.
+
+**Auth + multi-user.** Add authentication with role-based scoping, so coaching staff, front office, and analytics each get different default views and different export rights.
+
+**Saved reports.** Persist filters, the active tab, derived insights, and the action-plan prompt as a named, shareable report. Right now the URL is the only persistence, which is fine for a take-home but not for a team that revisits the same questions every week.
+
+**Derive more from fields already in the data.** A handful of columns aren't surfaced yet but should be:
+
+- `passer_x` / `passer_y` for pass origin. Pass distance, pass angle, and whether the passer is in the dunker spot, the corner, or above the break would let the app distinguish a kickout three from a drive-and-kick three, and an interior touch from a swing pass.
+- `period` + `start_game_clock` for time-in-game context. Late-third-quarter shot diet, fourth-quarter shot quality, and end-of-period heaves are different basketball questions and should be filterable.
+- Per-game and per-period rollups derived from `year` / `month` / `day` to expose streaks and rest days without a true schedule join.
+
+**AI action-plan as a real API.** The action-plan prompt is copy-ready today. With keys and an auth layer, that becomes a server-side endpoint that calls Claude or GPT, streams a response, and persists the output on the saved report.
+
+**Test + delivery posture.** Expand Vitest coverage to filter-combination property tests and insight-threshold regressions. Add Playwright for the three tabs and the lineup picker. Wire CI to run typecheck + tests on every PR, add a Lighthouse budget, and put error tracking (Sentry) and basic usage metrics in front of the deployed app.
+
+**Performance once data grows.** The current client-side filtering is instant at ~8.8k rows. At 100k+ it should move to server-side aggregation with materialized views per common rollup, and the heatmap should switch to canvas instead of SVG for cell-level rendering.
+
+### Data I Wish We Had
+
+The dataset is shot-level only. With richer inputs, the dashboard moves from descriptive shot profiling toward decision-support:
+
+- Player and ball tracking to replace broad contest buckets with true defender distance, closeout angle, shooter movement, and off-ball action context.
+- Defender identity and matchup context, so "heavily contested" is evaluated by who contested, their size and role, and the coverage that produced the attempt.
 - An expected shot value model on top of location, shot type, defender distance, shot clock, movement, pass context, and game state. That separates shot-making from shot quality and surfaces actual vs expected efficiency.
 - True possession, lineup, and play-type data so the Lineup view becomes shared-court shot selection, spacing, role interaction, and "which four players best support player X."
 - Opponent and defensive context: defensive rating, rim frequency allowed, 3PA rate allowed, scheme tendencies. Shot profiles should change by matchup, and right now they can't.
 - Multi-season, injury, availability, rest, and fatigue data to stabilize noisy samples and explain whether profile changes are role-driven, health-driven, or opponent-driven.
 - League, team, and role benchmarks for eFG%, expected points, shot quality above expectation, and zone/shot-type efficiency.
 - Video or possession links so a filtered result becomes a coaching playlist (late-clock contested pull-ups, high-value catch-and-shoot examples, etc.).
-- On the engineering side: move raw events into a database or columnar format, expose API-backed filtered aggregations, cache common rollups, and keep the current selector/component boundaries. The ingestion path (`src/lib/csv.ts` plus the helpers in `shotModel.ts`) is already a single seam that swaps for an API client.
